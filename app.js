@@ -25,7 +25,7 @@
     "Permuta": "Títulos pagos por permuta (troca). Não são boletos.",
     "Tesouraria": "Títulos acompanhados pela tesouraria. Não são boletos."
   };
-  var NOMES_COR = { verde: "Pagamento certo", amarelo: "Precisa cobrar", vermelho: "Difícil / nunca paga", nenhum: "Sem classificação" };
+  var NOMES_COR = { verde: "Sempre paga", amarelo: "Paga, mas com atraso", vermelho: "Nunca paga", nenhum: "Sem classificação" };
   var COR_HEX = { verde: "#1E9E5A", amarelo: "#F2B705", vermelho: "#D6322E", nenhum: "#B8C1CF" };
   var FAIXAS = ["A vencer", "1 a 30 dias", "31 a 60 dias", "61 a 90 dias", "Mais de 90 dias"];
   var FAIXA_CORES = ["#9AA5B1", "#F2B705", "#F28C28", "#D6322E", "#8E1B17"];
@@ -189,7 +189,7 @@
     return '<button type="button" class="quad ' + (ativo ? "on " : "") + (cat === BOLETO ? "boleto " : "") + '" data-sec="' + esc(cat) + '" aria-pressed="' + !!ativo + '"><b>' + esc(cat) + '</b><span class="v">' + R(rr.aberto) + "</span><small>" + rr.nAbertos.toLocaleString("pt-BR") + " título(s) em aberto · " + rr.nClientes + " cliente(s)</small>" + (extra || "") + "</button>";
   }
   function graficosSecao(prefixo, arr, comSemaforo) {
-    var semaforo = comSemaforo ? cardGraf("Semáforo dos clientes", "Valor em aberto por cor: verde = paga certo · amarelo = precisa cobrar · vermelho = difícil. Classifique na aba “Classificar clientes”.", prefixo + "Sem", "c6") : "";
+    var semaforo = comSemaforo ? cardGraf("Semáforo dos clientes", "Valor em aberto por cor: verde = sempre paga · amarelo = paga, mas com atraso · vermelho = nunca paga. Classifique na aba “Classificar clientes”.", prefixo + "Sem", "c6") : "";
     return cardGraf("Há quanto tempo está atrasado", "Valor em aberto agrupado por tempo de atraso. Quanto mais à direita, mais difícil de recuperar.", prefixo + "Faixa", "c6") +
       cardGraf("Os 10 maiores devedores", "Clientes com maior valor em aberto.", prefixo + "Top", "c6", true) + semaforo;
   }
@@ -215,7 +215,7 @@
       '<li><b>Boleto</b> é somente o que está na <b>Cobrança Administrativa</b>. Judicial, Dívida Antiga, Frota, Depósito e os demais tipos <b>não são boletos</b> e ficam separados, cada um no seu quadro.</li>' +
       '<li><b>Em aberto</b> é o dinheiro que os clientes deviam pagar e ainda não pagaram. <b>Recebido</b> é o que já entrou (data de pagamento preenchida na planilha).</li>' +
       '<li><b>Atraso</b> é quantos dias passaram desde o vencimento. Quanto maior o atraso, mais difícil de receber.</li>' +
-      '<li><b>Semáforo</b> (só para clientes de boleto): verde = paga certo · amarelo = precisa ficar cobrando · vermelho = difícil ou nunca paga.</li>' +
+      '<li><b>Semáforo</b> (só para clientes de boleto): verde = cliente que sempre paga · amarelo = cliente que paga, mas com atraso · vermelho = cliente que nunca paga.</li>' +
       '<li>Use as abas no topo para ver cada filial. Em cada filial dá para trocar o tipo de título, buscar um cliente e baixar a lista para Excel.</li></ul></details>';
     html += '<div class="titulo-secao"><h2>Boletos (Cobrança Administrativa)</h2><p>Só entram aqui os títulos da aba de cobrança administrativa.</p></div>' +
       kpisHtml(resumo(bol), true) + insights(bol, "Os boletos") +
@@ -281,7 +281,7 @@
       var sts = [["todos", "Todos"], ["aberto", "Em aberto"], ["pago", "Pagos ✔"]];
       if (estado.cat === BOLETO) sts = sts.concat([["verde", "● Verde"], ["amarelo", "● Amarelo"], ["vermelho", "● Vermelho"], ["nenhum", "Sem classificação"]]);
       el.querySelector("#zStatus").innerHTML = sts.map(function (s) { return '<button class="chip ' + (estado.status === s[0] ? "on" : "") + '" data-st="' + s[0] + '">' + s[1] + "</button>"; }).join("");
-      el.querySelector("#zLeg").innerHTML = estado.cat === BOLETO ? '<span><i class="dot verde"></i> Pagamento certo</span><span><i class="dot amarelo"></i> Precisa cobrar</span><span><i class="dot vermelho"></i> Difícil / nunca paga</span><span><i class="dot"></i> Sem classificação (altere em “Classificar clientes”)</span>' : "";
+      el.querySelector("#zLeg").innerHTML = estado.cat === BOLETO ? '<span><i class="dot verde"></i> Sempre paga</span><span><i class="dot amarelo"></i> Paga, mas com atraso</span><span><i class="dot vermelho"></i> Nunca paga</span><span><i class="dot"></i> Sem classificação (altere em “Classificar clientes”)</span>' : "";
     }
     function atualizaGraficos() {
       limparCharts();
@@ -349,7 +349,7 @@
     }).sort(function (a, b) { return b.aberto - a.aberto; });
 
     el.innerHTML = '<div class="titulo-secao"><h2>Classificar clientes</h2><p>Só aparecem clientes de boleto (Cobrança Administrativa)</p></div>' +
-      '<div class="aviso"><b>Como funciona:</b> clique na bolinha para classificar. <b>Verde</b> = pagamento certo · <b>Amarelo</b> = precisa ficar cobrando · <b>Vermelho</b> = difícil / nunca paga. ' +
+      '<div class="aviso"><b>Como funciona:</b> clique na bolinha para classificar. <b>Verde</b> = cliente que sempre paga · <b>Amarelo</b> = cliente que paga, mas com atraso · <b>Vermelho</b> = cliente que nunca paga. ' +
       'As escolhas ficam salvas neste navegador. Para que <b>todos</b> vejam, clique em “Baixar classificações” e envie o arquivo <code>ratings.js</code> para atualizar o repositório.</div>' +
       '<div id="zAviso"></div>' +
       '<div class="controles"><input type="search" id="cBusca" aria-label="Buscar cliente ou código" placeholder="Buscar cliente ou código…" autocomplete="off" spellcheck="false" value="' + esc(estado.cBusca) + '">' +
@@ -405,7 +405,7 @@
     el.querySelector("#cFilial").onchange = function (e) { estado.cFilial = e.target.value; estado.cLimite = 100; lista(); };
     el.querySelector("#cBaixar").onclick = function () {
       var o = todasClassificacoes(), ks = Object.keys(o).sort();
-      var txt = "// Classificação dos clientes (semáforo). Chave = código do cliente.\n// Valores: \"verde\" (pagamento certo), \"amarelo\" (precisa cobrar), \"vermelho\" (difícil / nunca paga).\nwindow.CLASSIFICACOES = {\n" +
+      var txt = "// Classificação dos clientes (semáforo). Chave = código do cliente.\n// Valores: \"verde\" (sempre paga), \"amarelo\" (paga, mas com atraso), \"vermelho\" (nunca paga).\nwindow.CLASSIFICACOES = {\n" +
         ks.map(function (k) { return '  "' + k + '": "' + o[k] + '"'; }).join(",\n") + "\n};\n";
       baixar("ratings.js", txt, "text/javascript;charset=utf-8");
     };
