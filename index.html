@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Painel de Inadimplência · Vincol Pneus</title>
+<meta name="description" content="Painel financeiro de inadimplência por filial - Vincol Pneus, Volta Redonda RJ">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+<body>
+<header class="topo">
+  <div class="topo-in">
+    <div class="marca">
+      <div class="logo" aria-hidden="true"><span></span></div>
+      <div>
+        <h1>Painel de Inadimplência</h1>
+        <p>Vincol Pneus · Volta Redonda – RJ</p>
+      </div>
+    </div>
+    <div class="topo-dir">
+      <div class="posicao">Posição em <strong id="dataRef">-</strong></div>
+      <button class="btn" id="btnImprimir" type="button">Imprimir / PDF</button>
+    </div>
+  </div>
+  <nav class="abas" id="abas" role="tablist" aria-label="Seções do painel"></nav>
+</header>
+
+<main id="conteudo" class="wrap"></main>
+
+<footer class="rodape">
+  <p>Dados extraídos do relatório financeiro (Tecinco). Valores em reais (R$). Esta primeira versão usa a planilha; a próxima etapa é ligar direto ao banco de dados.</p>
+</footer>
+
+<script src="data.js"></script>
+<script src="ratings.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
