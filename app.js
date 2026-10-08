@@ -28,7 +28,7 @@
   var NOMES_COR = { verde: "Pagamento certo", amarelo: "Precisa cobrar", vermelho: "Difícil / nunca paga", nenhum: "Sem classificação" };
   var COR_HEX = { verde: "#1E9E5A", amarelo: "#F2B705", vermelho: "#D6322E", nenhum: "#B8C1CF" };
   var FAIXAS = ["A vencer", "1 a 30 dias", "31 a 60 dias", "61 a 90 dias", "Mais de 90 dias"];
-  var FAIXA_CORES = ["#8A94A3", "#F5B800", "#F28C28", "#E3001B", "#7A0A12"];
+  var FAIXA_CORES = ["#9AA5B1", "#F2B705", "#F28C28", "#D6322E", "#8E1B17"];
 
   var REF = new Date(DADOS.gerado + "T00:00:00");
   var titulos = DADOS.titulos.map(function (t) {
@@ -156,7 +156,7 @@
   function gTop(id, arr, n) {
     var t = topDevedores(arr, n);
     grafico(id, { type: "bar", data: { labels: t.map(function (x) { return x.cli.length > 28 ? x.cli.slice(0, 27) + "…" : x.cli; }),
-        datasets: [{ label: "Em aberto", data: t.map(function (x) { return x.aberto; }), backgroundColor: "#3E4C59", borderRadius: 4 }] },
+        datasets: [{ label: "Em aberto", data: t.map(function (x) { return x.aberto; }), backgroundColor: "#D6322E", borderRadius: 4 }] },
       options: { indexAxis: "y", maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (c) { return " " + R(c.parsed.x); } } } },
         scales: { x: { ticks: { callback: function (v) { return Rk(v); } } } } } });
   }
@@ -170,13 +170,13 @@
   function gCategoriaBarras(id, arr) {
     var g = agrupar(arr, function (x) { return x.c; });
     var cats = CATEGORIAS.filter(function (c) { return g[c]; });
-    grafico(id, { type: "bar", data: { labels: cats, datasets: [
-        { label: "Em aberto", data: cats.map(function (c) { return soma(g[c], "aberto"); }), backgroundColor: "#D6322E", borderRadius: 4 },
-        { label: "Recebido", data: cats.map(function (c) { return soma(g[c], "recebido"); }), backgroundColor: "#1E9E5A", borderRadius: 4 }] },
-      options: { maintainAspectRatio: false, plugins: { tooltip: { callbacks: { label: function (c) { return " " + c.dataset.label + ": " + R(c.parsed.y); } } } },
+    var vals = cats.map(function (c) { return soma(g[c], "aberto"); });
+    grafico(id, { type: "bar", data: { labels: cats, datasets: [{ label: "Em aberto", data: vals,
+        backgroundColor: cats.map(function (c) { return c === BOLETO ? "#D6322E" : "#8FA3B8"; }), borderRadius: 4 }] },
+      options: { maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (c) { return " Em aberto: " + R(c.parsed.y); } } } },
         scales: { y: { ticks: { callback: function (v) { return Rk(v); } } } } } });
   }
-  function gSemaforo(id, arr) {
+    function gSemaforo(id, arr) {
     var ks = ["verde", "amarelo", "vermelho", "nenhum"];
     var v = ks.map(function (k) { return soma(arr.filter(function (x) { return !x.pago && cor(x.cod) === k; }), "aberto"); });
     grafico(id, { type: "doughnut", data: { labels: ks.map(function (k) { return NOMES_COR[k]; }), datasets: [{ data: v, backgroundColor: ks.map(function (k) { return COR_HEX[k]; }), borderColor: "#fff", borderWidth: 2 }] },
@@ -225,7 +225,7 @@
       '<div class="titulo-secao"><h3>' + esc(estado.secGeral) + '</h3><p>' + esc(DESCR[estado.secGeral] || "") + "</p></div>" +
       kpisHtml(resumo(sel), false) +
       '<div class="grade">' + cardGraf(esc(estado.secGeral) + ": em aberto por filial", "Quanto cada filial tem para receber neste tipo de título.", "sFilial", "c12") + graficosSecao("s", sel, false) + "</div>" +
-      '<div class="grade">' + cardGraf("Quanto cada tipo representa", "Valor em aberto de cada tipo de título, boletos incluídos (em vermelho forte).", "gTipos", "c12") + "</div>" +
+      '<div class="grade">' + cardGraf("Quanto cada tipo representa", "Valor em aberto de cada tipo de título. Os boletos aparecem em vermelho; os demais tipos (que não são boletos) em cinza-azulado.", "gTipos", "c12") + "</div>" +
       '<div class="card"><h3>Filiais</h3><p class="explica">Clique para abrir o detalhe de cada uma.</p><div class="filiais">' +
       FILIAIS.map(function (f) {
         var a = titulos.filter(function (x) { return x.f === f.id; }); if (!a.length) return "";
