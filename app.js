@@ -11,8 +11,8 @@
     { id: "OUT", nome: "Outras filiais (05 e 08)" }
   ];
   var BOLETO = "Boletos";
-  var CATEGORIAS = [BOLETO, "Judicial", "Cobrança Extra", "Dívida Antiga", "Frota", "Auditoria", "Órgão Público", "Depósito", "Pneustore", "Permuta", "Tesouraria"];
-  var PEND = ["Conciliação Vanessa", "Conciliação Marla", "Pendências Diversas", "Mercado Livre Koncilli", "Mercado Livre Conta", "Contas a Pagar"];
+  var CATEGORIAS = [BOLETO, "Judicial", "Cobrança Extrajudicial", "Dívida Antiga", "Órgão Público", "Depósito"];
+  var PEND = ["Frota", "Auditoria", "Tesouraria", "Permuta", "Pneustore", "Conciliação Vanessa", "Conciliação Marla", "Pendências Diversas", "Mercado Livre Koncilli", "Mercado Livre Conta", "Contas a Pagar"];
   var CORES_CAT = ["#E02727", "#1F2933", "#3B82C4", "#F5B800", "#8FA3B8", "#7A1F5C", "#3FA7A0", "#A8B0BB", "#C77D2E", "#5E6B7A", "#2F6B4F"];
   var DESCR = {
     "Boletos": "Boletos em cobrança administrativa. É o único tipo considerado boleto.",
@@ -23,7 +23,7 @@
     "Mercado Livre Koncilli": "Recebimentos do Mercado Livre pela Koncilli.",
     "Mercado Livre Conta": "Recebimentos do Mercado Livre na conta.",
     "Contas a Pagar": "Contas a pagar da empresa (fornecedores). É dinheiro que a empresa deve, não que recebe.",
-    "Cobrança Extra": "Títulos em cobrança extra. Não são boletos.",
+    "Cobrança Extrajudicial": "Títulos em cobrança extrajudicial. Não são boletos.",
     "Dívida Antiga": "Dívidas antigas. Não são boletos.",
     "Frota": "Títulos de clientes de frota. Não são boletos.",
     "Auditoria": "Títulos em conciliação / auditoria. Não são boletos.",
@@ -50,9 +50,10 @@
       recebido: pago ? t.vp : 0
     };
   }
-  var titulos = DADOS.titulos.map(mapa);
+  var receber = DADOS.titulos.map(mapa);
+  var titulos = receber.filter(function (x) { return CATEGORIAS.indexOf(x.c) >= 0; });
   var pagar = (DADOS.pagar || []).map(mapa);
-  var pend = (DADOS.pend || []).map(mapa).concat(pagar);
+  var pend = receber.filter(function (x) { return PEND.indexOf(x.c) >= 0; }).concat((DADOS.pend || []).map(mapa), pagar);
   var todos = titulos.concat(pend);
 
   /* ---------- Utilidades ---------- */
@@ -224,7 +225,7 @@
     return '<h3 class="subtit">Inadimplência</h3><div class="quads" role="group" aria-label="Inadimplência por tipo de título">' +
       CATEGORIAS.map(function (c) { return quad(c, arrDe(c), c === ativo); }).join("") + "</div>" +
       '<h3 class="subtit">Pendência</h3><div class="quads" role="group" aria-label="Pendência por tipo de título">' +
-      PEND.map(function (c) { return quad(c, arrDe(c), c === ativo); }).join("") + '</div><p class="explica">Pendência reúne as demais abas da planilha: conciliações, pendências diversas, Mercado Livre e contas a pagar. Não são boletos.</p>';
+      PEND.map(function (c) { return quad(c, arrDe(c), c === ativo); }).join("") + '</div><p class="explica">Pendência reúne as demais abas da planilha: Frota, Auditoria, Tesouraria, Permuta, Pneustore, conciliações, pendências diversas, Mercado Livre e contas a pagar. Não são boletos.</p>';
   }
   function renderGeral(el) {
     if (CATEGORIAS.indexOf(estado.secGeral) < 0 && PEND.indexOf(estado.secGeral) < 0) estado.secGeral = BOLETO;
@@ -232,7 +233,7 @@
     var sel = todos.filter(function (x) { return x.c === estado.secGeral; });
     var html = '<div class="titulo-secao"><h2>Visão geral da empresa</h2><p>Todas as filiais juntas. Clique em uma filial para ver o detalhe.</p></div>' +
       '<details class="como"><summary>Como ler este painel (30 segundos)</summary><ul>' +
-      '<li><b>Boleto</b> é somente o que está na <b>Cobrança Administrativa</b>. Judicial, Cobrança Extra, Dívida Antiga, Frota, Depósito e os demais tipos <b>não são boletos</b> e ficam separados, cada um no seu quadro.</li>' +
+      '<li><b>Boleto</b> é somente o que está na <b>Cobrança Administrativa</b>. Judicial, Cobrança Extrajudicial, Dívida Antiga, Órgão Público e Depósito <b>não são boletos</b> e ficam separados, cada um no seu quadro.</li>' +
       '<li><b>Em aberto</b> é o dinheiro que os clientes deviam pagar e ainda não pagaram. <b>Recebido</b> é o que já entrou (data de pagamento preenchida na planilha).</li>' +
       '<li><b>Atraso</b> é quantos dias passaram desde o vencimento. Quanto maior o atraso, mais difícil de receber.</li>' +
       '<li><b>Semáforo</b> (só para clientes de boleto): verde = cliente que sempre paga · amarelo = cliente que paga, mas com atraso · vermelho = cliente que nunca paga.</li>' +

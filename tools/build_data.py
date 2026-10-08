@@ -47,7 +47,7 @@ for pre,cat in TABS:
     assert len(ws)==1,(pre,[w.title for w in ws])
     for r in rows(ws[0]):
         c2=cat
-        if pre=="Dív": c2="Cobrança Extra" if str(r.get("STATUS")).upper().startswith("COBRANCA EXTRA") else "Dívida Antiga"
+        if pre=="Dív": c2="Cobrança Extrajudicial" if str(r.get("STATUS")).upper().startswith("COBRANCA EXTRA") else "Dívida Antiga"
         out_rows.append(mk(r,c2,ws[0].title))
 for ws in find("Cobran"):
     for r in rows(ws): out_rows.append(mk(r,"Boletos",ws.title))
