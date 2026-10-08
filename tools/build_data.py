@@ -4,7 +4,7 @@ MASK=True
 wb=openpyxl.load_workbook(src,data_only=True)
 def find(prefix):
     return [w for w in wb if w.title.startswith(prefix)]
-TABS=[("Dív","Cobrança Extra"),("Judicial","Judicial"),("Org","Órgão Público"),("Frota","Frota"),("Auditoria","Auditoria"),("Permuta","Permuta")]
+TABS=[("Dív","Dívida Antiga"),("Judicial","Judicial"),("Org","Órgão Público"),("Frota","Frota"),("Auditoria","Auditoria"),("Permuta","Permuta"),("Dep","Depósito"),("Pneustore","Pneustore")]
 ENT=re.compile(r"\b(LTDA|ME|EPP|EIRELI|S/?A|S\.A\.?|COMERCIO|COMÉRCIO|TRANSPORTES?|ASSOCIACAO|ASSOCIAÇÃO|FUNDO|INSTITUTO|PREFEITURA|MUNICIPAL|SERV|SERVICOS|SERVIÇOS|EMPRESA|CIA|CIA\.|LOGISTICA|AUTO|PECAS|PEÇAS|PNEUS?|BORRACHARIA|VIDROSCAR|CONCRETO|SOLUCOES|SOLUÇÕES|CORPORATIVAS|MERCADO|AUTOMOTIVA|AUTOMOTORES|REDE|CENTRO|CARGO|GESSO|SAAE|COOPERATIVA|CONSTRUCAO|CONSTRUÇÃO|MATERIAL|INDUSTRIA|INDÚSTRIA|RECAUCHUTADORA|TRANSP|LOCADORA|MOTORS|SERVICE|CENTER)\b",re.I)
 def mask(n):
     n=(n or "").strip()
@@ -48,7 +48,7 @@ for pre,cat in TABS:
     for r in rows(ws[0]):
         out_rows.append(mk(r,cat,ws[0].title))
 for ws in find("Cobran"):
-    for r in rows(ws): out_rows.append(mk(r,"Cobrança Adm",ws.title))
+    for r in rows(ws): out_rows.append(mk(r,"Boletos",ws.title))
 for r in rows(wb['Base de dados']):
     if r.get('STATUS')=='TESOURARIA': out_rows.append(mk(r,"Tesouraria","Base de dados"))
 # fix: keep only receivables (all chosen tabs are RECEBER)
