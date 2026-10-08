@@ -33,7 +33,7 @@
     "Permuta": "Títulos pagos por permuta (troca). Não são boletos.",
     "Tesouraria": "Títulos acompanhados pela tesouraria. Não são boletos."
   };
-  var NOMES_COR = { verde: "Sempre paga", amarelo: "Paga, mas com atraso", vermelho: "Nunca paga", nenhum: "Sem classificação" };
+  var NOMES_COR = { verde: "Em dia", amarelo: "Em atraso", vermelho: "Inadimplente", nenhum: "Sem classificação" };
   var COR_HEX = { verde: "#1E9E5A", amarelo: "#F2B705", vermelho: "#D6322E", nenhum: "#B8C1CF" };
   var FAIXAS = ["A vencer", "1 a 30 dias", "31 a 60 dias", "61 a 90 dias", "Mais de 90 dias"];
   var FAIXA_CORES = ["#9AA5B1", "#F2B705", "#F28C28", "#D6322E", "#8E1B17"];
@@ -204,7 +204,7 @@
     return '<button type="button" class="quad ' + (ativo ? "on " : "") + (cat === BOLETO ? "boleto " : "") + '" data-sec="' + esc(cat) + '" aria-pressed="' + !!ativo + '"><b>' + esc(cat) + '</b><span class="v">' + R(rr.aberto) + "</span><small>" + rr.nAbertos.toLocaleString("pt-BR") + " título(s) em aberto · " + rr.nClientes + " cliente(s)</small>" + (extra || "") + "</button>";
   }
   function graficosSecao(prefixo, arr, comSemaforo) {
-    var semaforo = comSemaforo ? cardGraf("Semáforo dos clientes", "Valor em aberto por cor: verde = sempre paga · amarelo = paga, mas com atraso · vermelho = nunca paga. Classifique na aba “Classificar clientes”.", prefixo + "Sem", "c6") : "";
+    var semaforo = comSemaforo ? cardGraf("Classificação dos clientes", "Valor em aberto por cor: verde = em dia (sempre paga) · amarelo = em atraso (paga, mas com atraso) · vermelho = inadimplente (nunca paga). Classifique na aba “Classificar clientes”.", prefixo + "Sem", "c6") : "";
     return cardGraf("Há quanto tempo está atrasado", "Valor em aberto agrupado por tempo de atraso. Quanto mais à direita, mais difícil de recuperar.", prefixo + "Faixa", "c6") +
       cardGraf("Os 10 maiores devedores", "Clientes com maior valor em aberto.", prefixo + "Top", "c6", true) + semaforo;
   }
@@ -238,7 +238,7 @@
       '<li><b>Boleto</b> é somente o que está na <b>Cobrança Administrativa</b>. Judicial, Cobrança Extrajudicial, Dívida Antiga, Órgão Público e Depósito <b>não são boletos</b> e ficam separados, cada um no seu quadro.</li>' +
       '<li><b>Em aberto</b> é o dinheiro que os clientes deviam pagar e ainda não pagaram. <b>Recebido</b> é o que já entrou (data de pagamento preenchida na planilha).</li>' +
       '<li><b>Atraso</b> é quantos dias passaram desde o vencimento. Quanto maior o atraso, mais difícil de receber.</li>' +
-      '<li><b>Semáforo</b> (só para clientes de boleto): verde = cliente que sempre paga · amarelo = cliente que paga, mas com atraso · vermelho = cliente que nunca paga.</li>' +
+      '<li><b>Classificação</b> (só para clientes de boleto): verde = em dia (cliente que sempre paga) · amarelo = em atraso (cliente que paga, mas com atraso) · vermelho = inadimplente (cliente que nunca paga).</li>' +
       '<li>Use as abas no topo para ver cada filial. Em cada filial dá para trocar o tipo de título, buscar um cliente e baixar a lista para Excel.</li></ul></details>';
     html += gruposQuads(function (c) { return todos.filter(function (x) { return x.c === c; }); }, estado.secGeral);
     html += '<div class="titulo-secao"><h3>' + esc(estado.secGeral) + '</h3><p>' + esc(DESCR[estado.secGeral] || "") + "</p></div>" +
@@ -271,7 +271,7 @@
     { k: "atraso", t: "Atraso", num: 1, v: function (x) { return x.pago ? "Pago" : FAIXAS[faixa(x.dias)]; }, o: function (a, b) { return a.dias - b.dias; } },
     { k: "val", t: "Valor do título", num: 1, v: function (x) { return R(x.val); }, o: function (a, b) { return a.val - b.val; } },
     { k: "sit", t: "Situação / valor", num: 1, v: function (x) { return x.pago ? "Pago" : "Em aberto"; }, o: function (a, b) { return (a.aberto + a.recebido) - (b.aberto + b.recebido); } },
-    { k: "sem", t: "Semáforo", v: function (x) { return NOMES_COR[cor(x.cod)]; }, o: function (a, b) { return NOMES_COR[cor(a.cod)].localeCompare(NOMES_COR[cor(b.cod)], "pt-BR"); } }
+    { k: "sem", t: "Classificação", v: function (x) { return NOMES_COR[cor(x.cod)]; }, o: function (a, b) { return NOMES_COR[cor(a.cod)].localeCompare(NOMES_COR[cor(b.cod)], "pt-BR"); } }
   ];
   function colDef(k) { return COLS.filter(function (c) { return c.k === k; })[0]; }
   function filtrar(base, ignorar) {
@@ -304,7 +304,30 @@
     document.removeEventListener("mousedown", fora, true);
     document.removeEventListener("keydown", esc2, true);
   }
-  function fora(e) { if (!e.target.closest(".popfiltro") && !e.target.closest("[data-col]")) fecharFiltro(); }
+  function fora(e) { if (!e.target.closest(".popfiltro") && !e.target.closest("[data-col]") && !e.target.closest("[data-clas]")) fecharFiltro(); }
+  /* Menu para classificar um cliente: Em dia (verde), Em atraso (amarelo), Inadimplente (vermelho) */
+  function abrirClas(cod, btn, aplicar) {
+    fecharFiltro();
+    var p = document.createElement("div");
+    p.className = "popfiltro popclas"; p.setAttribute("role", "menu"); p.setAttribute("aria-label", "Classificar cliente");
+    var atual = cor(cod);
+    p.innerHTML = '<p class="pc-tit">Classificar este cliente</p>' +
+      [["verde", "Em dia", "Cliente que sempre paga"], ["amarelo", "Em atraso", "Cliente que paga, mas com atraso"], ["vermelho", "Inadimplente", "Cliente que nunca paga"]].map(function (o) {
+        return '<button type="button" role="menuitem" class="clas-op sem-' + o[0] + (atual === o[0] ? " atual" : "") + '" data-k="' + o[0] + '"><b>' + o[1] + '</b><small>' + o[2] + "</small></button>";
+      }).join("") + '<button type="button" role="menuitem" class="clas-op sem-nenhum' + (atual === "nenhum" ? " atual" : "") + '" data-k="nenhum"><b>Sem classificação</b><small>Remover a cor</small></button>' +
+      '<p class="pf-mais">Fica salvo neste navegador. Para todos verem, baixe o arquivo na aba “Classificar clientes”.</p>';
+    document.body.appendChild(p);
+    var r = btn.getBoundingClientRect();
+    p.style.top = (r.bottom + window.scrollY + 4) + "px";
+    p.style.left = Math.max(8, Math.min(r.left + window.scrollX, window.innerWidth - 310)) + "px";
+    p.addEventListener("click", function (e) {
+      var b = e.target.closest("[data-k]"); if (!b) return;
+      setCor(cod, b.dataset.k); fecharFiltro(); aplicar(); anunciar("Classificação alterada para: " + NOMES_COR[b.dataset.k]);
+    });
+    var primeiro = p.querySelector("button"); if (primeiro) primeiro.focus({ preventScroll: true });
+    document.addEventListener("mousedown", fora, true);
+    document.addEventListener("keydown", esc2, true);
+  }
   function esc2(e) { if (e.key === "Escape") fecharFiltro(); }
   /* Filtro de coluna no estilo Excel: lista de valores com caixas de seleção, pesquisa e ordenação */
   function abrirFiltro(k, btn, fonte, aplicar) {
@@ -375,7 +398,7 @@
       el.querySelector("#zLanc").innerHTML = [["receber", "Contas a receber"], ["pagar", "Contas a pagar (" + pagarF.length + ")"]].map(function (s) { return '<button class="chip ' + (estado.lanc === s[0] ? "on" : "") + '" data-lanc="' + s[0] + '" aria-pressed="' + (estado.lanc === s[0]) + '">' + s[1] + "</button>"; }).join("");
       var sts = [["todos", "Todos"], ["aberto", "Em aberto"], ["atrasado", "Atrasado"], ["pago", "Pagos ✔"]];
       el.querySelector("#zStatus").innerHTML = sts.map(function (s) { return '<button class="chip ' + (estado.status === s[0] ? "on" : "") + '" data-st="' + s[0] + '">' + s[1] + "</button>"; }).join("");
-      el.querySelector("#zLeg").innerHTML = estado.cat === BOLETO ? '<span class="sem-cel sem-verde pill">Sempre paga</span><span class="sem-cel sem-amarelo pill">Paga, mas com atraso</span><span class="sem-cel sem-vermelho pill">Nunca paga</span><span class="sem-cel sem-nenhum pill">Sem classificação (altere em “Classificar clientes”)</span><label class="chk"><input type="checkbox" id="pintar"' + (estado.pintar ? " checked" : "") + '> Preencher o fundo com as cores</label>' : "";
+      el.querySelector("#zLeg").innerHTML = estado.cat === BOLETO ? '<span class="sem-cel sem-verde pill">Em dia</span><span class="sem-cel sem-amarelo pill">Em atraso</span><span class="sem-cel sem-vermelho pill">Inadimplente</span><span class="sem-cel sem-nenhum pill">Sem classificação (altere em “Classificar clientes”)</span><label class="chk"><input type="checkbox" id="pintar"' + (estado.pintar ? " checked" : "") + '> Preencher o fundo com as cores</label>' : "";
     }
     function atualizaGraficos() {
       limparCharts();
@@ -413,7 +436,7 @@
           '<td data-label="Título">' + esc(x.tit) + (x.par ? "<small> parc. " + esc(x.par) + "</small>" : "") + (x.d && PEND.indexOf(x.c) >= 0 ? "<small>" + (x.d === "PAGAR" ? "A pagar" : "A receber") + "</small>" : "") + "</td>" +
           '<td data-label="Vencimento">' + dataBR(x.v) + '</td><td class="num" data-label="Atraso">' + (x.pago ? "-" : diasTxt(x.dias)) + '</td><td class="num" data-label="Valor do título">' + R(x.val) + "</td>" +
           '<td class="num" data-label="Situação">' + (x.pago ? '<span class="selo pago">Pago em ' + dataBR(x.pg) + "</span><br>" + R(x.recebido) : '<span class="selo aberto">Em aberto</span><br>' + R(x.aberto)) + "</td>" +
-          (eb ? '<td data-label="Semáforo" class="sem-cel sem-' + c + '">' + NOMES_COR[c] + "</td>" : "") + "</tr>";
+          (eb ? '<td data-label="Classificação" class="sem-cel sem-' + c + '"><span class="sem-txt">' + NOMES_COR[c] + '</span> <button type="button" class="clas-btn" data-clas="' + esc(x.cod) + '" aria-haspopup="menu" aria-label="Classificar ' + esc(x.cli) + '">' + (c === "nenhum" ? "Classificar" : "Alterar") + ' ▾</button></td>' : "") + "</tr>";
       });
       h += "</tbody></table></div>";
       if (lista.length > vis.length) h += '<div class="mais"><button class="btn primario" id="maisBtn" type="button">Mostrar mais (' + (lista.length - vis.length) + " restantes)</button></div>";
@@ -428,6 +451,8 @@
     }
     function tudo() { chips(); atualizaGraficos(); atualizaTabela(); }
     el.onclick = function (e) {
+      var cl = e.target.closest("[data-clas]");
+      if (cl) { abrirClas(cl.dataset.clas, cl, function () { atualizaGraficos(); atualizaTabela(); }); return; }
       var cb = e.target.closest("[data-col]");
       if (cb) { abrirFiltro(cb.dataset.col, cb, estado.lanc === "pagar" ? pagarF : base, atualizaTabela); return; }
       var b = e.target.closest("[data-sec],[data-st],[data-lanc]"); if (!b) return;
@@ -468,7 +493,7 @@
     }).sort(function (a, b) { return b.aberto - a.aberto; });
 
     el.innerHTML = '<div class="titulo-secao"><h2>Classificar clientes</h2><p>Só aparecem clientes de boleto (Cobrança Administrativa)</p></div>' +
-      '<div class="aviso"><b>Como funciona:</b> clique na bolinha para classificar. <b>Verde</b> = cliente que sempre paga · <b>Amarelo</b> = cliente que paga, mas com atraso · <b>Vermelho</b> = cliente que nunca paga. ' +
+      '<div class="aviso"><b>Como funciona:</b> clique na bolinha para classificar. <b>Verde</b> = em dia (sempre paga) · <b>Amarelo</b> = em atraso (paga, mas com atraso) · <b>Vermelho</b> = inadimplente (nunca paga). ' +
       'As escolhas ficam salvas neste navegador. Para que <b>todos</b> vejam, clique em “Baixar classificações” e envie o arquivo <code>ratings.js</code> para atualizar o repositório.</div>' +
       '<div id="zAviso"></div>' +
       '<div class="controles"><input type="search" id="cBusca" aria-label="Buscar cliente ou código" placeholder="Buscar cliente ou código…" autocomplete="off" spellcheck="false" value="' + esc(estado.cBusca) + '">' +
@@ -495,12 +520,12 @@
         return '<button class="chip ' + (estado.cCor === s[0] ? "on" : "") + '" data-cc="' + s[0] + '">' + s[1] + ' <span class="n">' + n + "</span></button>";
       }).join("");
       var vis = l.slice(0, estado.cLimite);
-      var h = '<p class="explica" style="margin:0 0 8px;color:var(--texto-suave)">' + l.length.toLocaleString("pt-BR") + " cliente(s)</p><div class=\"tabela-wrap\"><table><thead><tr><th>Cliente</th><th>Filial(is)</th><th class=\"num\">Títulos em aberto</th><th class=\"num\">Total em aberto</th><th class=\"num\">Maior atraso</th><th>Semáforo</th></tr></thead><tbody>";
+      var h = '<p class="explica" style="margin:0 0 8px;color:var(--texto-suave)">' + l.length.toLocaleString("pt-BR") + " cliente(s)</p><div class=\"tabela-wrap\"><table><thead><tr><th>Cliente</th><th>Filial(is)</th><th class=\"num\">Títulos em aberto</th><th class=\"num\">Total em aberto</th><th class=\"num\">Maior atraso</th><th>Classificação</th></tr></thead><tbody>";
       if (!l.length) h += '<tr><td colspan="6" class="vazio">Nenhum cliente encontrado.</td></tr>';
       vis.forEach(function (c) {
         var cc = cor(c.cod);
         h += '<tr><td class="cli"><span class="nome" title="' + esc(c.cli) + '">' + esc(c.cli) + "</span><small>Cód. " + esc(c.cod) + (c.pagou ? ", já pagou título" : "") + '</small></td><td data-label="Filial(is)">' + c.filiais.map(function (f) { return f === "OUT" ? "Outras" : f; }).join(", ") + '</td><td class="num" data-label="Títulos em aberto">' + c.n + '</td><td class="num" data-label="Total em aberto">' + R(c.aberto) + '</td><td class="num" data-label="Maior atraso">' + (c.n ? diasTxt(c.dias) : "-") + "</td>" +
-          '<td data-label="Semáforo"><span class="seletor" role="group" aria-label="Classificação de ' + esc(c.cli) + '" data-cod="' + esc(c.cod) + '">' +
+          '<td data-label="Classificação"><span class="seletor" role="group" aria-label="Classificação de ' + esc(c.cli) + '" data-cod="' + esc(c.cod) + '">' +
           ["verde", "amarelo", "vermelho", "nenhum"].map(function (k) { return '<button type="button" class="s-' + k + (cc === k ? " on" : "") + '" data-c="' + k + '" aria-pressed="' + (cc === k) + '" aria-label="' + NOMES_COR[k] + '" title="' + NOMES_COR[k] + '"><i></i></button>'; }).join("") + "</span></td></tr>";
       });
       h += "</tbody></table></div>";
@@ -524,7 +549,7 @@
     el.querySelector("#cFilial").onchange = function (e) { estado.cFilial = e.target.value; estado.cLimite = 100; lista(); };
     el.querySelector("#cBaixar").onclick = function () {
       var o = todasClassificacoes(), ks = Object.keys(o).sort();
-      var txt = "// Classificação dos clientes (semáforo). Chave = código do cliente.\n// Valores: \"verde\" (sempre paga), \"amarelo\" (paga, mas com atraso), \"vermelho\" (nunca paga).\nwindow.CLASSIFICACOES = {\n" +
+      var txt = "// Classificação dos clientes (semáforo). Chave = código do cliente.\n// Valores: \"verde\" (em dia), \"amarelo\" (em atraso), \"vermelho\" (inadimplente).\nwindow.CLASSIFICACOES = {\n" +
         ks.map(function (k) { return '  "' + k + '": "' + o[k] + '"'; }).join(",\n") + "\n};\n";
       baixar("ratings.js", txt, "text/javascript;charset=utf-8");
     };

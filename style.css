@@ -227,3 +227,17 @@ th .thf:focus-visible{outline:3px solid var(--amarelo-marca);outline-offset:1px}
   .pf-item{padding:8px 2px}
   .pf-acoes .btn{flex:1}
 }
+/* Classificar direto na tabela */
+.clas-btn{font:inherit;font-size:.78rem;font-weight:700;cursor:pointer;margin-left:6px;padding:3px 10px;border-radius:999px;border:1px solid var(--azul-escuro);background:#fff;color:var(--azul-escuro);white-space:nowrap}
+.clas-btn:hover{background:var(--azul-claro)}
+.popclas{width:280px}
+.pc-tit{margin:0 0 6px;font-weight:700;color:var(--azul-escuro)}
+.clas-op{all:unset;box-sizing:border-box;display:flex;flex-direction:column;width:100%;cursor:pointer;padding:8px 12px;border-radius:8px;margin-bottom:6px;border:2px solid transparent}
+.clas-op small{font-weight:400;opacity:.9}
+.clas-op.sem-verde{background:#1E9E5A;color:#fff}
+.clas-op.sem-amarelo{background:#F2B705;color:#1B2433}
+.clas-op.sem-vermelho{background:#D6322E;color:#fff}
+.clas-op.sem-nenhum{background:#E4E8EE;color:var(--texto)}
+.clas-op:focus-visible,.clas-op.atual{border-color:var(--azul-escuro);outline:none;box-shadow:0 0 0 2px #fff inset}
+.sem-cel.sem-txt{font-weight:600}
+@media(max-width:640px){.clas-btn{min-height:36px}}

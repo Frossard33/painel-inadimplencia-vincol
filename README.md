@@ -3,7 +3,7 @@
 Dashboard para a diretoria acompanhar os títulos a receber vencidos, por filial.
 
 - **Abas:** Visão geral, Três Poços (01), Ponte Alta (02), Barra Mansa (03), Beira Rio (04), Resende (06), Outras filiais e *Classificar clientes*.
-- **Semáforo:** verde = sempre paga · amarelo = paga, mas com atraso · vermelho = nunca paga.
+- **Classificação:** verde = em dia (sempre paga) · amarelo = em atraso (paga, mas com atraso) · vermelho = inadimplente (nunca paga).
 - **Exportar:** botão de Excel (CSV) por filial e impressão/PDF.
 
 ## Atualizar os dados
