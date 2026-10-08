@@ -12,10 +12,17 @@
   ];
   var BOLETO = "Boletos";
   var CATEGORIAS = [BOLETO, "Judicial", "Cobrança Extra", "Dívida Antiga", "Frota", "Auditoria", "Órgão Público", "Depósito", "Pneustore", "Permuta", "Tesouraria"];
+  var PEND = ["Conciliação Vanessa", "Conciliação Marla", "Pendências Diversas", "Mercado Livre Koncilli", "Mercado Livre Conta", "Contas a Pagar"];
   var CORES_CAT = ["#E02727", "#1F2933", "#3B82C4", "#F5B800", "#8FA3B8", "#7A1F5C", "#3FA7A0", "#A8B0BB", "#C77D2E", "#5E6B7A", "#2F6B4F"];
   var DESCR = {
     "Boletos": "Boletos em cobrança administrativa. É o único tipo considerado boleto.",
     "Judicial": "Títulos em cobrança judicial. Não são boletos.",
+    "Conciliação Vanessa": "Pendências de conciliação acompanhadas pela Vanessa (a pagar e a receber).",
+    "Conciliação Marla": "Pendências de conciliação acompanhadas pela Marla (a pagar e a receber).",
+    "Pendências Diversas": "Pendências diversas a receber.",
+    "Mercado Livre Koncilli": "Recebimentos do Mercado Livre pela Koncilli.",
+    "Mercado Livre Conta": "Recebimentos do Mercado Livre na conta.",
+    "Contas a Pagar": "Contas a pagar da empresa (fornecedores). É dinheiro que a empresa deve, não que recebe.",
     "Cobrança Extra": "Títulos em cobrança extra. Não são boletos.",
     "Dívida Antiga": "Dívidas antigas. Não são boletos.",
     "Frota": "Títulos de clientes de frota. Não são boletos.",
@@ -38,13 +45,15 @@
     var pago = !!t.pg;
     return {
       f: t.f, c: t.c, tit: t.tit, par: t.par, cod: t.cod, cli: t.cli, v: t.v, dias: dias,
-      val: t.val, pago: pago, pg: t.pg,
+      val: t.val, pago: pago, pg: t.pg, d: t.d,
       aberto: pago ? 0 : t.sal,
       recebido: pago ? t.vp : 0
     };
   }
   var titulos = DADOS.titulos.map(mapa);
   var pagar = (DADOS.pagar || []).map(mapa);
+  var pend = (DADOS.pend || []).map(mapa).concat(pagar);
+  var todos = titulos.concat(pend);
 
   /* ---------- Utilidades ---------- */
   var brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -187,6 +196,8 @@
   /* ---------- Visão geral ---------- */
   function quad(cat, arr, ativo, extra) {
     var rr = resumo(arr);
+    if (PEND.indexOf(cat) >= 0 && cat !== "Contas a Pagar" && arr.some(function (x) { return x.d === "PAGAR"; }) && arr.some(function (x) { return x.d !== "PAGAR"; }))
+      extra = "<small>A pagar " + Rk(soma(arr.filter(function (x) { return x.d === "PAGAR"; }), "aberto")) + " · a receber " + Rk(soma(arr.filter(function (x) { return x.d !== "PAGAR"; }), "aberto")) + "</small>";
     return '<button type="button" class="quad ' + (ativo ? "on " : "") + (cat === BOLETO ? "boleto " : "") + '" data-sec="' + esc(cat) + '" aria-pressed="' + !!ativo + '"><b>' + esc(cat) + '</b><span class="v">' + R(rr.aberto) + "</span><small>" + rr.nAbertos.toLocaleString("pt-BR") + " título(s) em aberto · " + rr.nClientes + " cliente(s)</small>" + (extra || "") + "</button>";
   }
   function graficosSecao(prefixo, arr, comSemaforo) {
@@ -213,12 +224,12 @@
     return '<h3 class="subtit">Inadimplência</h3><div class="quads" role="group" aria-label="Inadimplência por tipo de título">' +
       CATEGORIAS.map(function (c) { return quad(c, arrDe(c), c === ativo); }).join("") + "</div>" +
       '<h3 class="subtit">Pendência</h3><div class="quads" role="group" aria-label="Pendência por tipo de título">' +
-      CATEGORIAS.map(quadVazio).join("") + '</div><p class="explica">Os quadros de Pendência já estão prontos e serão alimentados em seguida.</p>';
+      PEND.map(function (c) { return quad(c, arrDe(c), c === ativo); }).join("") + '</div><p class="explica">Pendência reúne as demais abas da planilha: conciliações, pendências diversas, Mercado Livre e contas a pagar. Não são boletos.</p>';
   }
   function renderGeral(el) {
-    if (CATEGORIAS.indexOf(estado.secGeral) < 0) estado.secGeral = BOLETO;
+    if (CATEGORIAS.indexOf(estado.secGeral) < 0 && PEND.indexOf(estado.secGeral) < 0) estado.secGeral = BOLETO;
     var eb = estado.secGeral === BOLETO;
-    var sel = titulos.filter(function (x) { return x.c === estado.secGeral; });
+    var sel = todos.filter(function (x) { return x.c === estado.secGeral; });
     var html = '<div class="titulo-secao"><h2>Visão geral da empresa</h2><p>Todas as filiais juntas. Clique em uma filial para ver o detalhe.</p></div>' +
       '<details class="como"><summary>Como ler este painel (30 segundos)</summary><ul>' +
       '<li><b>Boleto</b> é somente o que está na <b>Cobrança Administrativa</b>. Judicial, Cobrança Extra, Dívida Antiga, Frota, Depósito e os demais tipos <b>não são boletos</b> e ficam separados, cada um no seu quadro.</li>' +
@@ -226,7 +237,7 @@
       '<li><b>Atraso</b> é quantos dias passaram desde o vencimento. Quanto maior o atraso, mais difícil de receber.</li>' +
       '<li><b>Semáforo</b> (só para clientes de boleto): verde = cliente que sempre paga · amarelo = cliente que paga, mas com atraso · vermelho = cliente que nunca paga.</li>' +
       '<li>Use as abas no topo para ver cada filial. Em cada filial dá para trocar o tipo de título, buscar um cliente e baixar a lista para Excel.</li></ul></details>';
-    html += gruposQuads(function (c) { return titulos.filter(function (x) { return x.c === c; }); }, estado.secGeral);
+    html += gruposQuads(function (c) { return todos.filter(function (x) { return x.c === c; }); }, estado.secGeral);
     html += '<div class="titulo-secao"><h3>' + esc(estado.secGeral) + '</h3><p>' + esc(DESCR[estado.secGeral] || "") + "</p></div>" +
       kpisHtml(resumo(sel), eb) + insights(sel, eb ? "Os boletos" : estado.secGeral) +
       '<div class="grade">' + cardGraf(esc(estado.secGeral) + (eb ? ": em aberto × recebido por filial" : ": em aberto por filial"), eb ? "Vermelho é o que falta receber; verde é o que já foi pago." : "Quanto cada filial tem para receber neste tipo de título.", "sFilial", "c12") + graficosSecao("s", sel, eb) + "</div>" +
@@ -267,8 +278,8 @@
     return a;
   }
   function renderFilial(el, fid) {
-    var base = titulos.filter(function (x) { return x.f === fid; });
-    var tipos = CATEGORIAS, pagarF = pagar.filter(function (x) { return x.f === fid; });
+    var base = todos.filter(function (x) { return x.f === fid; });
+    var tipos = CATEGORIAS.concat(PEND), pagarF = pagar.filter(function (x) { return x.f === fid; });
     if (tipos.indexOf(estado.cat) < 0) estado.cat = BOLETO;
     el.innerHTML = '<div class="titulo-secao"><h2>' + (fid !== "OUT" ? "Filial " + fid + " · " : "") + nomeFilial(fid) + '</h2><p>Escolha o tipo de título. Só <b>Boletos</b> são boletos; os demais ficam separados. Posição em ' + dataBR(DADOS.gerado) + '</p></div>' +
       '<div id="zCat"></div>' +
@@ -316,7 +327,7 @@
       vis.forEach(function (x) {
         var c = cor(x.cod);
         h += '<tr class="' + (x.pago ? "pago" : "") + '"><td class="cli"><span class="nome" title="' + esc(x.cli) + '">' + esc(x.cli) + "</span><small>Cód. " + esc(x.cod) + "</small></td>" +
-          '<td data-label="Título">' + esc(x.tit) + (x.par ? "<small> parc. " + esc(x.par) + "</small>" : "") + "</td>" +
+          '<td data-label="Título">' + esc(x.tit) + (x.par ? "<small> parc. " + esc(x.par) + "</small>" : "") + (x.d && PEND.indexOf(x.c) >= 0 ? "<small>" + (x.d === "PAGAR" ? "A pagar" : "A receber") + "</small>" : "") + "</td>" +
           '<td data-label="Vencimento">' + dataBR(x.v) + '</td><td class="num" data-label="Atraso">' + (x.pago ? "-" : diasTxt(x.dias)) + '</td><td class="num" data-label="Valor do título">' + R(x.val) + "</td>" +
           '<td class="num" data-label="Situação">' + (x.pago ? '<span class="selo pago">Pago em ' + dataBR(x.pg) + "</span><br>" + R(x.recebido) : '<span class="selo aberto">Em aberto</span><br>' + R(x.aberto)) + "</td>" +
           (eb ? '<td data-label="Semáforo"><i class="dot ' + c + '" role="img" aria-label="' + NOMES_COR[c] + '" title="' + NOMES_COR[c] + '"></i> <span class="so-leitor">' + NOMES_COR[c] + "</span></td>" : "") + "</tr>";
