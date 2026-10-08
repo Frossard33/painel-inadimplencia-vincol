@@ -107,7 +107,7 @@
 
   /* ---------- Estado ---------- */
   var estado = { aba: "geral", cat: "Boletos", secGeral: "Boletos", lanc: "receber", status: "todos", busca: "", ordem: "valor", limite: 100,
-                 cBusca: "", cCor: "todos", cFilial: "todas", cLimite: 100 };
+                 colFilt: {}, ordemCol: null, cBusca: "", cCor: "todos", cFilial: "todas", cLimite: 100 };
   var charts = [];
   function limparCharts() { charts.forEach(function (c) { c.destroy(); }); charts = []; }
   function grafico(id, cfg) {
@@ -262,21 +262,93 @@
     if (estado.status === "pago") return x.pago;
     return true;
   }
-  function filtrar(base) {
+  var COLS = [
+    { k: "cli", t: "Cliente / Fornecedor", v: function (x) { return x.cli; }, o: function (a, b) { return a.cli.localeCompare(b.cli, "pt-BR"); } },
+    { k: "tit", t: "Título", v: function (x) { return String(x.tit); }, o: function (a, b) { return String(a.tit).localeCompare(String(b.tit), "pt-BR", { numeric: true }); } },
+    { k: "venc", t: "Vencimento", v: function (x) { return dataBR(x.v); }, o: function (a, b) { return a.v < b.v ? -1 : a.v > b.v ? 1 : 0; } },
+    { k: "atraso", t: "Atraso", num: 1, v: function (x) { return x.pago ? "Pago" : FAIXAS[faixa(x.dias)]; }, o: function (a, b) { return a.dias - b.dias; } },
+    { k: "val", t: "Valor do título", num: 1, v: function (x) { return R(x.val); }, o: function (a, b) { return a.val - b.val; } },
+    { k: "sit", t: "Situação / valor", num: 1, v: function (x) { return x.pago ? "Pago" : "Em aberto"; }, o: function (a, b) { return (a.aberto + a.recebido) - (b.aberto + b.recebido); } },
+    { k: "sem", t: "Semáforo", v: function (x) { return NOMES_COR[cor(x.cod)]; }, o: function (a, b) { return NOMES_COR[cor(a.cod)].localeCompare(NOMES_COR[cor(b.cod)], "pt-BR"); } }
+  ];
+  function colDef(k) { return COLS.filter(function (c) { return c.k === k; })[0]; }
+  function filtrar(base, ignorar) {
     var q = estado.busca.trim().toLowerCase();
     return base.filter(function (x) {
       if (estado.lanc !== "pagar" && x.c !== estado.cat) return false;
       if (!passaStatus(x)) return false;
       if (q && (x.cli + " " + x.cod + " " + x.tit).toLowerCase().indexOf(q) < 0) return false;
+      for (var k in estado.colFilt) {
+        if (k === ignorar) continue;
+        var d = colDef(k);
+        if (d && estado.colFilt[k].indexOf(d.v(x)) < 0) return false;
+      }
       return true;
     });
   }
   function ordenar(arr) {
     var a = arr.slice();
+    if (estado.ordemCol) {
+      var d = colDef(estado.ordemCol.k), dir = estado.ordemCol.dir;
+      if (d) { a.sort(function (x, y) { return d.o(x, y) * dir; }); return a; }
+    }
     if (estado.ordem === "valor") a.sort(function (x, y) { return (y.aberto + y.recebido) - (x.aberto + x.recebido); });
     else if (estado.ordem === "atraso") a.sort(function (x, y) { return y.dias - x.dias; });
     else a.sort(function (x, y) { return x.cli.localeCompare(y.cli, "pt-BR"); });
     return a;
+  }
+  function fecharFiltro() {
+    [].forEach.call(document.querySelectorAll(".popfiltro"), function (p) { p.remove(); });
+    document.removeEventListener("mousedown", fora, true);
+    document.removeEventListener("keydown", esc2, true);
+  }
+  function fora(e) { if (!e.target.closest(".popfiltro") && !e.target.closest("[data-col]")) fecharFiltro(); }
+  function esc2(e) { if (e.key === "Escape") fecharFiltro(); }
+  /* Filtro de coluna no estilo Excel: lista de valores com caixas de seleção, pesquisa e ordenação */
+  function abrirFiltro(k, btn, fonte, aplicar) {
+    fecharFiltro();
+    var d = colDef(k), linhas = filtrar(fonte, k), m = {};
+    linhas.forEach(function (x) { var v = d.v(x); if (!m[v]) m[v] = { n: 0, row: x }; m[v].n++; });
+    var vals = Object.keys(m).sort(function (a, b) { return d.o(m[a].row, m[b].row); });
+    var sel = {}, atual = estado.colFilt[k];
+    vals.forEach(function (v) { sel[v] = !atual || atual.indexOf(v) >= 0; });
+    var p = document.createElement("div");
+    p.className = "popfiltro"; p.setAttribute("role", "dialog"); p.setAttribute("aria-label", "Filtrar coluna " + d.t);
+    p.innerHTML = '<div class="pf-ord"><button type="button" data-o="1">Ordenar de A a Z / menor para maior</button><button type="button" data-o="-1">Ordenar de Z a A / maior para menor</button></div>' +
+      '<input type="search" class="pf-busca" placeholder="Pesquisar…" aria-label="Pesquisar valores" autocomplete="off">' +
+      '<label class="pf-todos"><input type="checkbox" class="pf-all"> (Selecionar tudo)</label><div class="pf-lista"></div>' +
+      '<div class="pf-acoes"><button type="button" class="btn primario" data-a="ok">OK</button><button type="button" class="btn" data-a="cancel">Cancelar</button><button type="button" class="btn" data-a="limpar">Limpar filtro</button></div>';
+    document.body.appendChild(p);
+    var r = btn.getBoundingClientRect();
+    p.style.top = (r.bottom + window.scrollY + 4) + "px";
+    p.style.left = Math.max(8, Math.min(r.left + window.scrollX, window.innerWidth - 310)) + "px";
+    var lista = p.querySelector(".pf-lista"), busca = p.querySelector(".pf-busca"), all = p.querySelector(".pf-all");
+    function visiveis() { var q = busca.value.trim().toLowerCase(); return vals.filter(function (v) { return !q || v.toLowerCase().indexOf(q) >= 0; }); }
+    function desenhar() {
+      var vs = visiveis();
+      lista.innerHTML = vs.slice(0, 500).map(function (v) { var i = vals.indexOf(v); return '<label class="pf-item"><input type="checkbox" data-i="' + i + '"' + (sel[v] ? " checked" : "") + "> <span>" + esc(v) + ' <small>(' + m[v].n + ")</small></span></label>"; }).join("") +
+        (vs.length > 500 ? '<p class="pf-mais">Mostrando 500 de ' + vs.length + ". Use a pesquisa para refinar.</p>" : "") + (vs.length ? "" : '<p class="pf-mais">Nenhum valor encontrado.</p>');
+      all.checked = vs.length > 0 && vs.every(function (v) { return sel[v]; });
+    }
+    p.addEventListener("change", function (e) {
+      if (e.target === all) { visiveis().forEach(function (v) { sel[v] = all.checked; }); desenhar(); }
+      else if (e.target.dataset.i != null) { sel[vals[+e.target.dataset.i]] = e.target.checked; all.checked = visiveis().every(function (v) { return sel[v]; }); }
+    });
+    busca.addEventListener("input", desenhar);
+    p.addEventListener("click", function (e) {
+      var b = e.target.closest("button"); if (!b) return;
+      if (b.dataset.o) { estado.ordemCol = { k: k, dir: +b.dataset.o }; fecharFiltro(); aplicar(); return; }
+      if (b.dataset.a === "cancel") { fecharFiltro(); return; }
+      if (b.dataset.a === "limpar") { delete estado.colFilt[k]; fecharFiltro(); aplicar(); return; }
+      if (b.dataset.a === "ok") {
+        var ch = vals.filter(function (v) { return sel[v]; });
+        if (ch.length === vals.length) delete estado.colFilt[k]; else estado.colFilt[k] = ch;
+        estado.limite = 100; fecharFiltro(); aplicar();
+      }
+    });
+    desenhar(); busca.focus({ preventScroll: true });
+    document.addEventListener("mousedown", fora, true);
+    document.addEventListener("keydown", esc2, true);
   }
   function renderFilial(el, fid) {
     var base = todos.filter(function (x) { return x.f === fid; });
@@ -323,7 +395,11 @@
     }
     function atualizaTabela() {
       var pg = estado.lanc === "pagar", eb = estado.cat === BOLETO && !pg, lista = ordenar(filtrar(pg ? pagarF : base)), vis = lista.slice(0, estado.limite), nc = eb ? 7 : 6;
-      var h = '<div class="tabela-wrap"><table><thead><tr><th>Cliente / Fornecedor</th><th>Título</th><th>Vencimento</th><th class="num">Atraso</th><th class="num">Valor do título</th><th class="num">Situação / valor</th>' + (eb ? "<th>Semáforo</th>" : "") + "</tr></thead><tbody>";
+      var cabec = COLS.filter(function (c) { return c.k !== "sem" || eb; }).map(function (c) {
+        var on = !!estado.colFilt[c.k], ord = estado.ordemCol && estado.ordemCol.k === c.k;
+        return '<th class="' + (c.num ? "num" : "") + '" aria-sort="' + (ord ? (estado.ordemCol.dir > 0 ? "ascending" : "descending") : "none") + '"><button type="button" class="thf' + (on || ord ? " on" : "") + '" data-col="' + c.k + '" aria-haspopup="dialog" title="Filtrar e ordenar: ' + esc(c.t) + '">' + esc(c.t) + ' <span aria-hidden="true">' + (on ? "⏷" : ord ? (estado.ordemCol.dir > 0 ? "▲" : "▼") : "▾") + "</span></button></th>";
+      }).join("");
+      var h = '<div class="tabela-wrap"><table><thead><tr>' + cabec + "</tr></thead><tbody>";
       if (!lista.length) h += '<tr><td colspan="' + nc + '" class="vazio">Nenhum título encontrado. Tente limpar a busca ou escolher “Todos” nos filtros.</td></tr>';
       vis.forEach(function (x) {
         var c = cor(x.cod);
@@ -335,22 +411,28 @@
       });
       h += "</tbody></table></div>";
       if (lista.length > vis.length) h += '<div class="mais"><button class="btn primario" id="maisBtn" type="button">Mostrar mais (' + (lista.length - vis.length) + " restantes)</button></div>";
-      h = '<p class="explica" style="margin:0 0 8px;color:var(--texto-suave)">' + lista.length.toLocaleString("pt-BR") + " título(s) de " + (pg ? "Contas a pagar" : esc(estado.cat)) + ". Total em aberto: <strong>" + R(soma(lista, "aberto")) + "</strong></p>" + h;
+      var nf = Object.keys(estado.colFilt).length;
+      h = '<p class="explica" style="margin:0 0 8px;color:var(--texto-suave)">' + lista.length.toLocaleString("pt-BR") + " título(s) de " + (pg ? "Contas a pagar" : esc(estado.cat)) + ". Total em aberto: <strong>" + R(soma(lista, "aberto")) + "</strong> " + (nf || estado.ordemCol ? '<button type="button" class="btn" id="limparCols">Limpar filtros das colunas</button>' : "") + "</p>" + h;
       el.querySelector("#zTab").innerHTML = h;
       anunciar(lista.length.toLocaleString("pt-BR") + " títulos encontrados");
       var mb = el.querySelector("#maisBtn");
       if (mb) mb.onclick = function () { estado.limite += 200; atualizaTabela(); };
+      var lc = el.querySelector("#limparCols");
+      if (lc) lc.onclick = function () { estado.colFilt = {}; estado.ordemCol = null; atualizaTabela(); };
     }
     function tudo() { chips(); atualizaGraficos(); atualizaTabela(); }
     el.onclick = function (e) {
+      var cb = e.target.closest("[data-col]");
+      if (cb) { abrirFiltro(cb.dataset.col, cb, estado.lanc === "pagar" ? pagarF : base, atualizaTabela); return; }
       var b = e.target.closest("[data-sec],[data-st],[data-lanc]"); if (!b) return;
+      fecharFiltro(); estado.colFilt = {}; estado.ordemCol = null;
       if (b.dataset.lanc) estado.lanc = b.dataset.lanc;
       if (b.dataset.sec) { if (estado.cat !== b.dataset.sec) estado.status = "todos"; estado.cat = b.dataset.sec; estado.lanc = "receber"; }
       if (b.dataset.st) estado.status = b.dataset.st;
       estado.limite = 100; tudo();
     };
     el.querySelector("#busca").oninput = function (e) { estado.busca = e.target.value; estado.limite = 100; atualizaTabela(); };
-    el.querySelector("#ordem").onchange = function (e) { estado.ordem = e.target.value; atualizaTabela(); };
+    el.querySelector("#ordem").onchange = function (e) { estado.ordem = e.target.value; estado.ordemCol = null; atualizaTabela(); };
     el.querySelector("#btnCsv").onclick = function () {
       var pg = estado.lanc === "pagar", lista = ordenar(filtrar(pg ? pagarF : base)), eb = estado.cat === BOLETO && !pg;
       var linhas = [["Filial", "Tipo", "Cliente", "Codigo cliente", "Titulo", "Parcela", "Vencimento", "Dias de atraso", "Valor do titulo", "Em aberto", "Recebido", "Data pagamento"].concat(eb ? ["Semaforo"] : [])];
@@ -476,7 +558,7 @@
     document.getElementById("abas").innerHTML = h;
   }
   function render() {
-    limparCharts();
+    limparCharts(); fecharFiltro();
     var el = document.getElementById("conteudo"); el.onclick = null;
     el.setAttribute("role", "tabpanel"); el.setAttribute("aria-labelledby", "aba-" + estado.aba);
     [].forEach.call(document.querySelectorAll(".aba"), function (a) {
@@ -488,7 +570,7 @@
     else renderFilial(el, estado.aba);
   }
   function ir(aba, foco) {
-    if (aba !== estado.aba) { estado.cat = BOLETO; estado.lanc = "receber"; estado.status = "todos"; estado.busca = ""; estado.limite = 100; }
+    if (aba !== estado.aba) { estado.cat = BOLETO; estado.lanc = "receber"; estado.status = "todos"; estado.busca = ""; estado.limite = 100; estado.colFilt = {}; estado.ordemCol = null; }
     estado.aba = aba; salvarUrl();
     render(); window.scrollTo(0, 0);
     if (foco) document.getElementById("aba-" + aba).focus();

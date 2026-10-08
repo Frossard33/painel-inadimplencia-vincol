@@ -186,3 +186,21 @@ select{border:1px solid var(--borda);border-radius:8px;padding:7px 10px;font:inh
 .quad.vazio b{color:var(--texto-suave)}
 .quad.vazio:hover{box-shadow:none;border-color:var(--borda)}
 .controles b{color:var(--azul-escuro)}
+
+/* Filtro de coluna estilo Excel */
+th .thf{all:unset;cursor:pointer;color:#fff;font-weight:600;font-size:.82rem;display:inline-flex;gap:6px;align-items:center;padding:2px 4px;border-radius:4px}
+th .thf:hover,th .thf.on{background:rgba(255,255,255,.18)}
+th .thf:focus-visible{outline:3px solid var(--amarelo-marca);outline-offset:1px}
+.popfiltro{position:absolute;z-index:60;width:300px;max-width:calc(100vw - 16px);background:#fff;color:var(--texto);border:1px solid var(--borda);border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.25);padding:10px;font-size:.88rem}
+.pf-ord{display:grid;gap:4px;margin-bottom:8px}
+.pf-ord button{all:unset;cursor:pointer;padding:6px 8px;border-radius:6px;color:var(--azul-escuro)}
+.pf-ord button:hover,.pf-ord button:focus-visible{background:var(--azul-claro)}
+.pf-busca{width:100%;min-width:0;max-width:none;margin-bottom:6px;padding:7px 10px}
+.pf-todos{display:flex;gap:6px;align-items:center;padding:4px 2px;border-bottom:1px solid var(--borda);font-weight:600}
+.pf-lista{max-height:220px;overflow:auto;padding:4px 0}
+.pf-item{display:flex;gap:6px;align-items:flex-start;padding:3px 2px;cursor:pointer}
+.pf-item small{color:var(--texto-suave)}
+.pf-mais{margin:6px 2px;color:var(--texto-suave);font-size:.8rem}
+.pf-acoes{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.pf-acoes .btn{padding:6px 12px;min-height:0}
+@media(max-width:640px){th .thf{display:none}}
