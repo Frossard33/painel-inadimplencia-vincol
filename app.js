@@ -85,6 +85,8 @@
 
   /* ---------- Classificações (semáforo) ---------- */
   var LS_KEY = "vincol_classificacoes_v1";
+  var pintarLS = "vincol_pintar_v1", pintarIni = true;
+  try { pintarIni = localStorage.getItem(pintarLS) !== "0"; } catch (e) { pintarIni = true; }
   var locais = {};
   try { locais = JSON.parse(localStorage.getItem(LS_KEY) || "{}") || {}; } catch (e) { locais = {}; }
   function salvarLocais() { try { localStorage.setItem(LS_KEY, JSON.stringify(locais)); } catch (e) { /* sem armazenamento */ } }
@@ -107,7 +109,7 @@
 
   /* ---------- Estado ---------- */
   var estado = { aba: "geral", cat: "Boletos", secGeral: "Boletos", lanc: "receber", status: "todos", busca: "", ordem: "valor", limite: 100,
-                 colFilt: {}, ordemCol: null, cBusca: "", cCor: "todos", cFilial: "todas", cLimite: 100 };
+                 colFilt: {}, ordemCol: null, pintar: pintarIni, cBusca: "", cCor: "todos", cFilial: "todas", cLimite: 100 };
   var charts = [];
   function limparCharts() { charts.forEach(function (c) { c.destroy(); }); charts = []; }
   function grafico(id, cfg) {
@@ -373,7 +375,7 @@
       el.querySelector("#zLanc").innerHTML = [["receber", "Contas a receber"], ["pagar", "Contas a pagar (" + pagarF.length + ")"]].map(function (s) { return '<button class="chip ' + (estado.lanc === s[0] ? "on" : "") + '" data-lanc="' + s[0] + '" aria-pressed="' + (estado.lanc === s[0]) + '">' + s[1] + "</button>"; }).join("");
       var sts = [["todos", "Todos"], ["aberto", "Em aberto"], ["atrasado", "Atrasado"], ["pago", "Pagos ✔"]];
       el.querySelector("#zStatus").innerHTML = sts.map(function (s) { return '<button class="chip ' + (estado.status === s[0] ? "on" : "") + '" data-st="' + s[0] + '">' + s[1] + "</button>"; }).join("");
-      el.querySelector("#zLeg").innerHTML = estado.cat === BOLETO ? '<span><i class="dot verde"></i> Sempre paga</span><span><i class="dot amarelo"></i> Paga, mas com atraso</span><span><i class="dot vermelho"></i> Nunca paga</span><span><i class="dot"></i> Sem classificação (altere em “Classificar clientes”)</span>' : "";
+      el.querySelector("#zLeg").innerHTML = estado.cat === BOLETO ? '<span class="sem-cel sem-verde pill">Sempre paga</span><span class="sem-cel sem-amarelo pill">Paga, mas com atraso</span><span class="sem-cel sem-vermelho pill">Nunca paga</span><span class="sem-cel sem-nenhum pill">Sem classificação (altere em “Classificar clientes”)</span><label class="chk"><input type="checkbox" id="pintar"' + (estado.pintar ? " checked" : "") + '> Preencher o fundo com as cores</label>' : "";
     }
     function atualizaGraficos() {
       limparCharts();
@@ -399,15 +401,19 @@
         var on = !!estado.colFilt[c.k], ord = estado.ordemCol && estado.ordemCol.k === c.k;
         return '<th class="' + (c.num ? "num" : "") + '" aria-sort="' + (ord ? (estado.ordemCol.dir > 0 ? "ascending" : "descending") : "none") + '"><button type="button" class="thf' + (on || ord ? " on" : "") + '" data-col="' + c.k + '" aria-haspopup="dialog" title="Filtrar e ordenar: ' + esc(c.t) + '">' + esc(c.t) + ' <span aria-hidden="true">' + (on ? "⏷" : ord ? (estado.ordemCol.dir > 0 ? "▲" : "▼") : "▾") + "</span></button></th>";
       }).join("");
-      var h = '<div class="tabela-wrap"><table><thead><tr>' + cabec + "</tr></thead><tbody>";
+      var barra = '<div class="colfiltros" role="group" aria-label="Filtrar colunas">' + COLS.filter(function (c) { return c.k !== "sem" || eb; }).map(function (c) {
+        var on = !!estado.colFilt[c.k] || (estado.ordemCol && estado.ordemCol.k === c.k);
+        return '<button type="button" class="chip' + (on ? " on" : "") + '" data-col="' + c.k + '" aria-haspopup="dialog">' + esc(c.t) + ' ▾</button>';
+      }).join("") + "</div>";
+      var h = barra + '<div class="tabela-wrap"><table class="' + (eb && estado.pintar ? "pintar" : "") + '"><thead><tr>' + cabec + "</tr></thead><tbody>";
       if (!lista.length) h += '<tr><td colspan="' + nc + '" class="vazio">Nenhum título encontrado. Tente limpar a busca ou escolher “Todos” nos filtros.</td></tr>';
       vis.forEach(function (x) {
         var c = cor(x.cod);
-        h += '<tr class="' + (x.pago ? "pago" : "") + '"><td class="cli"><span class="nome" title="' + esc(x.cli) + '">' + esc(x.cli) + "</span><small>Cód. " + esc(x.cod) + "</small></td>" +
+        h += '<tr class="' + (eb && estado.pintar ? "linha-" + c : (x.pago ? "pago" : "")) + '"><td class="cli"><span class="nome" title="' + esc(x.cli) + '">' + esc(x.cli) + "</span><small>Cód. " + esc(x.cod) + "</small></td>" +
           '<td data-label="Título">' + esc(x.tit) + (x.par ? "<small> parc. " + esc(x.par) + "</small>" : "") + (x.d && PEND.indexOf(x.c) >= 0 ? "<small>" + (x.d === "PAGAR" ? "A pagar" : "A receber") + "</small>" : "") + "</td>" +
           '<td data-label="Vencimento">' + dataBR(x.v) + '</td><td class="num" data-label="Atraso">' + (x.pago ? "-" : diasTxt(x.dias)) + '</td><td class="num" data-label="Valor do título">' + R(x.val) + "</td>" +
           '<td class="num" data-label="Situação">' + (x.pago ? '<span class="selo pago">Pago em ' + dataBR(x.pg) + "</span><br>" + R(x.recebido) : '<span class="selo aberto">Em aberto</span><br>' + R(x.aberto)) + "</td>" +
-          (eb ? '<td data-label="Semáforo"><i class="dot ' + c + '" role="img" aria-label="' + NOMES_COR[c] + '" title="' + NOMES_COR[c] + '"></i> <span class="so-leitor">' + NOMES_COR[c] + "</span></td>" : "") + "</tr>";
+          (eb ? '<td data-label="Semáforo" class="sem-cel sem-' + c + '">' + NOMES_COR[c] + "</td>" : "") + "</tr>";
       });
       h += "</tbody></table></div>";
       if (lista.length > vis.length) h += '<div class="mais"><button class="btn primario" id="maisBtn" type="button">Mostrar mais (' + (lista.length - vis.length) + " restantes)</button></div>";
@@ -431,6 +437,9 @@
       if (b.dataset.st) estado.status = b.dataset.st;
       estado.limite = 100; tudo();
     };
+    el.addEventListener("change", function (e) {
+      if (e.target.id === "pintar") { estado.pintar = e.target.checked; try { localStorage.setItem(pintarLS, estado.pintar ? "1" : "0"); } catch (x) { /* sem armazenamento */ } atualizaTabela(); }
+    });
     el.querySelector("#busca").oninput = function (e) { estado.busca = e.target.value; estado.limite = 100; atualizaTabela(); };
     el.querySelector("#ordem").onchange = function (e) { estado.ordem = e.target.value; estado.ordemCol = null; atualizaTabela(); };
     el.querySelector("#btnCsv").onclick = function () {

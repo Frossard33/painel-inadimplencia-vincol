@@ -204,3 +204,26 @@ th .thf:focus-visible{outline:3px solid var(--amarelo-marca);outline-offset:1px}
 .pf-acoes{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
 .pf-acoes .btn{padding:6px 12px;min-height:0}
 @media(max-width:640px){th .thf{display:none}}
+/* Semáforo sem imagem: texto + opção de preencher o fundo */
+.sem-cel{font-weight:600}
+.sem-cel.pill{display:inline-block;padding:3px 10px;border-radius:999px;border:1px solid var(--borda);background:#fff;font-weight:600;font-size:.8rem}
+.pintar .sem-cel.sem-verde,.sem-cel.pill.sem-verde{background:#1E9E5A;color:#fff;border-color:#1E9E5A}
+.pintar .sem-cel.sem-amarelo,.sem-cel.pill.sem-amarelo{background:#F2B705;color:#1B2433;border-color:#F2B705}
+.pintar .sem-cel.sem-vermelho,.sem-cel.pill.sem-vermelho{background:#D6322E;color:#fff;border-color:#D6322E}
+.pintar .sem-cel.sem-nenhum,.sem-cel.pill.sem-nenhum{background:#E4E8EE;color:var(--texto)}
+.pintar tr.linha-verde{background:#E3F5EA}
+.pintar tr.linha-amarelo{background:#FFF4CC}
+.pintar tr.linha-vermelho{background:#FDE3E2}
+.chk{display:inline-flex;align-items:center;gap:6px;font-weight:600;color:var(--azul-escuro);cursor:pointer}
+.chk input{width:18px;height:18px}
+.colfiltros{display:none}
+@media(max-width:640px){
+  .colfiltros{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:8px}
+  .colfiltros .chip{flex:0 0 auto}
+  .pintar td.sem-cel{border-radius:8px;padding:6px 10px;justify-content:center}
+  .pintar td.sem-cel::before{color:inherit}
+  .popfiltro{position:fixed!important;left:8px!important;right:8px!important;bottom:8px!important;top:auto!important;width:auto!important;max-height:85vh;overflow:auto}
+  .pf-lista{max-height:38vh}
+  .pf-item{padding:8px 2px}
+  .pf-acoes .btn{flex:1}
+}
