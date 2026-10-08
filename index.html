@@ -5,14 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Painel de Inadimplência · Vincol Pneus</title>
 <meta name="description" content="Painel financeiro de inadimplência por filial - Vincol Pneus, Volta Redonda RJ">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#E02727">
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
 <link rel="stylesheet" href="style.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 </head>
 <body>
+<a class="pular" href="#conteudo">Pular para o conteúdo</a>
 <header class="topo">
   <div class="topo-in">
     <div class="marca">
-      <div class="logo" aria-hidden="true"><span></span></div>
+      <div class="logo"><img src="logo.png" alt="Vincol, desde 1979" onerror="this.outerHTML='<div class=wordmark aria-label=Vincol>VINCOL<small>DESDE 1979</small></div>'"></div>
       <div>
         <h1>Painel de Inadimplência</h1>
         <p>Vincol Pneus · Volta Redonda – RJ</p>
@@ -26,7 +30,8 @@
   <nav class="abas" id="abas" role="tablist" aria-label="Seções do painel"></nav>
 </header>
 
-<main id="conteudo" class="wrap"></main>
+<main id="conteudo" class="wrap" tabindex="-1"></main>
+<div id="anuncio" class="so-leitor" role="status" aria-live="polite"></div>
 
 <footer class="rodape">
   <p>Dados extraídos do relatório financeiro (Tecinco). Valores em reais (R$). Esta primeira versão usa a planilha; a próxima etapa é ligar direto ao banco de dados.</p>

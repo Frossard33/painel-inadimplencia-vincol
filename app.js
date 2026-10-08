@@ -11,7 +11,7 @@
     { id: "OUT", nome: "Outras filiais (05 e 08)" }
   ];
   var CATEGORIAS = ["Judicial", "Frota", "Tesouraria", "Cobrança Extra", "Permuta", "Órgão Público", "Auditoria", "Cobrança Adm"];
-  var CORES_CAT = ["#0B2E5C", "#1F6FB5", "#E3001B", "#F5B800", "#6C8EBF", "#7A1F5C", "#3FA7A0", "#8A94A3"];
+  var CORES_CAT = ["#1F2933", "#3B82C4", "#E02727", "#F5B800", "#8FA3B8", "#7A1F5C", "#3FA7A0", "#A8B0BB"];
   var NOMES_COR = { verde: "Pagamento certo", amarelo: "Precisa cobrar", vermelho: "Difícil / nunca paga", nenhum: "Sem classificação" };
   var COR_HEX = { verde: "#1E9E5A", amarelo: "#F2B705", vermelho: "#D6322E", nenhum: "#B8C1CF" };
   var FAIXAS = ["A vencer", "1 a 30 dias", "31 a 60 dias", "61 a 90 dias", "Mais de 90 dias"];
@@ -92,6 +92,7 @@
   if (window.Chart) {
     Chart.defaults.font.family = '"Segoe UI",system-ui,Arial,sans-serif';
     Chart.defaults.color = "#5B6676";
+    if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) Chart.defaults.animation = false;
   }
   var tipR = { callbacks: { label: function (c) { return " " + (c.dataset.label ? c.dataset.label + ": " : "") + R(c.parsed.x != null && c.chart.options.indexAxis === "y" ? c.parsed.x : (c.parsed.y != null ? c.parsed.y : c.parsed)); } } };
 
@@ -100,7 +101,7 @@
     return '<div class="kpi ' + (classe || "") + '"><div class="rotulo">' + rotulo + '</div><div class="valor">' + valor + '</div><div class="ajuda">' + ajuda + "</div></div>";
   }
   function cardGraf(titulo, explica, id, span, alto) {
-    return '<div class="card ' + span + '"><h3>' + titulo + '</h3><p class="explica">' + explica + '</p><div class="graf ' + (alto ? "alto" : "") + '"><canvas id="' + id + '"></canvas></div></div>';
+    return '<div class="card ' + span + '"><h3>' + titulo + '</h3><p class="explica">' + explica + '</p><div class="graf ' + (alto ? "alto" : "") + '"><canvas id="' + id + '" role="img" aria-label="Gráfico: ' + esc(titulo) + ". " + esc(explica) + '"></canvas></div></div>';
   }
   function resumo(arr) {
     var abertos = arr.filter(function (x) { return !x.pago; });
@@ -111,11 +112,11 @@
   }
   function kpisHtml(r) {
     return '<div class="kpis">' +
-      kpi("Total em aberto", R(r.aberto), "Soma de tudo que está vencido e ainda não foi pago", "vermelho") +
-      kpi("Inadimplência", pct(r.taxa), "Em aberto ÷ (em aberto + recebido). Quanto do cobrado ainda não entrou", "amarelo") +
-      kpi("Títulos em aberto", r.nAbertos.toLocaleString("pt-BR"), "Quantidade de boletos / parcelas sem pagamento") +
-      kpi("Clientes devedores", r.nClientes.toLocaleString("pt-BR"), "Clientes diferentes com algum valor em aberto") +
-      kpi("Já recebido", R(r.rec), r.nPagos + " título(s) pago(s) neste período", "verde") + "</div>";
+      kpi("Quanto falta receber?", R(r.aberto), "Soma de tudo que está vencido e ainda não foi pago", "vermelho") +
+      kpi("Quanto do cobrado não entrou?", pct(r.taxa), "É a inadimplência: valor em aberto ÷ (em aberto + recebido)", "amarelo") +
+      kpi("Quantos boletos estão abertos?", r.nAbertos.toLocaleString("pt-BR"), "Boletos e parcelas sem pagamento") +
+      kpi("Quantos clientes devem?", r.nClientes.toLocaleString("pt-BR"), "Clientes diferentes com algum valor em aberto") +
+      kpi("Quanto já entrou?", R(r.rec), r.nPagos + " título(s) pago(s) neste período", "verde") + "</div>";
   }
   function insights(arr, titulo) {
     var ab = soma(arr, "aberto"); if (!ab) return "";
@@ -138,7 +139,7 @@
   function gTop(id, arr, n) {
     var t = topDevedores(arr, n);
     grafico(id, { type: "bar", data: { labels: t.map(function (x) { return x.cli.length > 28 ? x.cli.slice(0, 27) + "…" : x.cli; }),
-        datasets: [{ label: "Em aberto", data: t.map(function (x) { return x.aberto; }), backgroundColor: "#13508F", borderRadius: 4 }] },
+        datasets: [{ label: "Em aberto", data: t.map(function (x) { return x.aberto; }), backgroundColor: "#3E4C59", borderRadius: 4 }] },
       options: { indexAxis: "y", maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (c) { return " " + R(c.parsed.x); } } } },
         scales: { x: { ticks: { callback: function (v) { return Rk(v); } } } } } });
   }
@@ -168,7 +169,12 @@
   /* ---------- Visão geral ---------- */
   function renderGeral(el) {
     var r = resumo(titulos);
-    var html = '<div class="titulo-secao"><h2>Visão geral da empresa</h2><p>Todas as filiais juntas · clique em uma filial para ver o detalhe</p></div>';
+    var html = '<div class="titulo-secao"><h2>Visão geral da empresa</h2><p>Todas as filiais juntas. Clique em uma filial para ver o detalhe.</p></div>' +
+      '<details class="como"><summary>Como ler este painel (30 segundos)</summary><ul>' +
+      '<li><b>Em aberto</b> é o dinheiro que os clientes deviam pagar e ainda não pagaram. <b>Recebido</b> é o que já entrou.</li>' +
+      '<li><b>Atraso</b> é quantos dias passaram desde o vencimento. Quanto maior o atraso, mais difícil de receber.</li>' +
+      '<li><b>Semáforo:</b> verde = cliente paga certo · amarelo = precisa ficar cobrando · vermelho = difícil ou nunca paga.</li>' +
+      '<li>Use as abas no topo para ver cada filial. Em cada filial dá para filtrar, buscar um cliente e baixar a lista para Excel.</li></ul></details>';
     html += kpisHtml(r) + insights(titulos, "A empresa");
     html += '<div class="grade">' +
       cardGraf("Em aberto × Recebido por filial", "Compara quanto cada filial tem para receber (vermelho) com o que já foi pago (verde).", "gFilial", "c7") +
@@ -221,7 +227,7 @@
       '<div class="controles"><div class="chips" id="zStatus"></div></div>' +
       '<div class="grade" id="zGraf"></div>' +
       '<div class="legenda"><span><i class="dot verde"></i> Pagamento certo</span><span><i class="dot amarelo"></i> Precisa cobrar</span><span><i class="dot vermelho"></i> Difícil / nunca paga</span><span><i class="dot"></i> Ainda sem classificação (altere em “Classificar clientes”)</span></div>' +
-      '<div class="controles"><input type="search" id="busca" placeholder="Buscar cliente, código ou título…" value="' + esc(estado.busca) + '">' +
+      '<div class="controles"><input type="search" id="busca" aria-label="Buscar cliente, código ou título" placeholder="Buscar cliente, código ou título…" autocomplete="off" spellcheck="false" value="' + esc(estado.busca) + '">' +
       '<label>Ordenar: <select id="ordem"><option value="valor">Maior valor</option><option value="atraso">Mais atrasado</option><option value="cliente">Cliente A–Z</option></select></label>' +
       '<button class="btn" id="btnCsv" type="button">Exportar para Excel</button></div>' +
       '<div id="zTab"></div>';
@@ -255,19 +261,20 @@
     function atualizaTabela() {
       var lista = ordenar(filtrar(base)), vis = lista.slice(0, estado.limite);
       var h = '<div class="tabela-wrap"><table><thead><tr><th>Cliente / Fornecedor</th><th>Título</th><th>Categoria</th><th>Vencimento</th><th class="num">Atraso</th><th class="num">Valor do título</th><th class="num">Situação / valor</th><th>Semáforo</th></tr></thead><tbody>';
-      if (!lista.length) h += '<tr><td colspan="8" class="vazio">Nenhum título encontrado com esses filtros.</td></tr>';
+      if (!lista.length) h += '<tr><td colspan="8" class="vazio">Nenhum título encontrado. Tente limpar a busca ou escolher “Todos” nos filtros.</td></tr>';
       vis.forEach(function (x) {
         var c = x.pago ? "verde" : cor(x.cod);
-        h += '<tr class="' + (x.pago ? "pago" : "") + '"><td class="cli">' + esc(x.cli) + "<small>Cód. " + esc(x.cod) + "</small></td>" +
-          "<td>" + esc(x.tit) + (x.par ? "<small> parc. " + esc(x.par) + "</small>" : "") + '</td><td><span class="selo cat">' + esc(x.c) + "</span></td>" +
-          "<td>" + dataBR(x.v) + '</td><td class="num">' + (x.pago ? "-" : diasTxt(x.dias)) + '</td><td class="num">' + R(x.val) + "</td>" +
-          '<td class="num">' + (x.pago ? '<span class="selo pago">Pago ' + dataBR(x.pg) + "</span><br>" + R(x.recebido) : '<span class="selo aberto">Em aberto</span><br>' + R(x.aberto)) + "</td>" +
-          '<td><i class="dot ' + c + '" title="' + NOMES_COR[c] + '"></i></td></tr>';
+        h += '<tr class="' + (x.pago ? "pago" : "") + '"><td class="cli"><span class="nome" title="' + esc(x.cli) + '">' + esc(x.cli) + "</span><small>Cód. " + esc(x.cod) + "</small></td>" +
+          '<td data-label="Título">' + esc(x.tit) + (x.par ? "<small> parc. " + esc(x.par) + "</small>" : "") + '</td><td data-label="Categoria"><span class="selo cat">' + esc(x.c) + "</span></td>" +
+          '<td data-label="Vencimento">' + dataBR(x.v) + '</td><td class="num" data-label="Atraso">' + (x.pago ? "-" : diasTxt(x.dias)) + '</td><td class="num" data-label="Valor do título">' + R(x.val) + "</td>" +
+          '<td class="num" data-label="Situação">' + (x.pago ? '<span class="selo pago">Pago ' + dataBR(x.pg) + "</span><br>" + R(x.recebido) : '<span class="selo aberto">Em aberto</span><br>' + R(x.aberto)) + "</td>" +
+          '<td data-label="Semáforo"><i class="dot ' + c + '" role="img" aria-label="' + NOMES_COR[c] + '" title="' + NOMES_COR[c] + '"></i> <span class="so-leitor">' + NOMES_COR[c] + "</span></td></tr>";
       });
       h += "</tbody></table></div>";
       if (lista.length > vis.length) h += '<div class="mais"><button class="btn primario" id="maisBtn" type="button">Mostrar mais (' + (lista.length - vis.length) + " restantes)</button></div>";
-      h = '<p class="explica" style="margin:0 0 8px;color:var(--texto-suave)">' + lista.length.toLocaleString("pt-BR") + " título(s) · total em aberto: <strong>" + R(soma(lista, "aberto")) + "</strong></p>" + h;
+      h = '<p class="explica" style="margin:0 0 8px;color:var(--texto-suave)">' + lista.length.toLocaleString("pt-BR") + " título(s). Total em aberto: <strong>" + R(soma(lista, "aberto")) + "</strong></p>" + h;
       el.querySelector("#zTab").innerHTML = h;
+      anunciar(lista.length.toLocaleString("pt-BR") + " títulos encontrados");
       var mb = el.querySelector("#maisBtn");
       if (mb) mb.onclick = function () { estado.limite += 200; atualizaTabela(); };
     }
@@ -309,7 +316,7 @@
       '<div class="aviso"><b>Como funciona:</b> clique na bolinha para classificar. <b>Verde</b> = pagamento certo · <b>Amarelo</b> = precisa ficar cobrando · <b>Vermelho</b> = difícil / nunca paga. ' +
       'As escolhas ficam salvas neste navegador. Para que <b>todos</b> vejam, clique em “Baixar classificações” e envie o arquivo <code>ratings.js</code> para atualizar o repositório.</div>' +
       '<div id="zAviso"></div>' +
-      '<div class="controles"><input type="search" id="cBusca" placeholder="Buscar cliente ou código…" value="' + esc(estado.cBusca) + '">' +
+      '<div class="controles"><input type="search" id="cBusca" aria-label="Buscar cliente ou código" placeholder="Buscar cliente ou código…" autocomplete="off" spellcheck="false" value="' + esc(estado.cBusca) + '">' +
       '<label>Filial: <select id="cFilial"><option value="todas">Todas</option>' + FILIAIS.map(function (f) { return '<option value="' + f.id + '">' + f.nome + "</option>"; }).join("") + "</select></label>" +
       '<button class="btn primario" id="cBaixar" type="button">Baixar classificações</button><button class="btn" id="cDescartar" type="button">Descartar alterações locais</button></div>' +
       '<div class="controles"><div class="chips" id="cChips"></div></div><div id="zLista"></div>';
@@ -337,9 +344,9 @@
       if (!l.length) h += '<tr><td colspan="6" class="vazio">Nenhum cliente encontrado.</td></tr>';
       vis.forEach(function (c) {
         var cc = cor(c.cod);
-        h += '<tr><td class="cli">' + esc(c.cli) + "<small>Cód. " + esc(c.cod) + (c.pagou ? " · já pagou título" : "") + "</small></td><td>" + c.filiais.map(function (f) { return f === "OUT" ? "Outras" : f; }).join(", ") + '</td><td class="num">' + c.n + '</td><td class="num">' + R(c.aberto) + '</td><td class="num">' + (c.n ? diasTxt(c.dias) : "-") + "</td>" +
-          '<td><span class="seletor" data-cod="' + esc(c.cod) + '">' +
-          ["verde", "amarelo", "vermelho", "nenhum"].map(function (k) { return '<button type="button" class="s-' + k + (cc === k ? " on" : "") + '" data-c="' + k + '" title="' + NOMES_COR[k] + '"><i></i></button>'; }).join("") + "</span></td></tr>";
+        h += '<tr><td class="cli"><span class="nome" title="' + esc(c.cli) + '">' + esc(c.cli) + "</span><small>Cód. " + esc(c.cod) + (c.pagou ? ", já pagou título" : "") + '</small></td><td data-label="Filial(is)">' + c.filiais.map(function (f) { return f === "OUT" ? "Outras" : f; }).join(", ") + '</td><td class="num" data-label="Títulos em aberto">' + c.n + '</td><td class="num" data-label="Total em aberto">' + R(c.aberto) + '</td><td class="num" data-label="Maior atraso">' + (c.n ? diasTxt(c.dias) : "-") + "</td>" +
+          '<td data-label="Semáforo"><span class="seletor" role="group" aria-label="Classificação de ' + esc(c.cli) + '" data-cod="' + esc(c.cod) + '">' +
+          ["verde", "amarelo", "vermelho", "nenhum"].map(function (k) { return '<button type="button" class="s-' + k + (cc === k ? " on" : "") + '" data-c="' + k + '" aria-pressed="' + (cc === k) + '" aria-label="' + NOMES_COR[k] + '" title="' + NOMES_COR[k] + '"><i></i></button>'; }).join("") + "</span></td></tr>";
       });
       h += "</tbody></table></div>";
       if (l.length > vis.length) h += '<div class="mais"><button class="btn primario" id="cMais" type="button">Mostrar mais (' + (l.length - vis.length) + ")</button></div>";
@@ -352,7 +359,8 @@
       var s = b.closest(".seletor");
       if (s && b.dataset.c) {
         setCor(s.dataset.cod, b.dataset.c);
-        [].forEach.call(s.querySelectorAll("button"), function (x) { x.classList.toggle("on", x === b); });
+        [].forEach.call(s.querySelectorAll("button"), function (x) { x.classList.toggle("on", x === b); x.setAttribute("aria-pressed", x === b); });
+        anunciar("Classificação alterada para: " + NOMES_COR[b.dataset.c]);
         aviso();
         var chipsEl = el.querySelector("#cChips"); if (chipsEl && estado.cCor === "todos") { /* contagens atualizam no próximo filtro */ }
       }
@@ -373,36 +381,72 @@
   }
 
   /* ---------- Abas e roteamento ---------- */
+  function anunciar(txt) { var a = document.getElementById("anuncio"); if (a) a.textContent = txt; }
+  function abasValidas() { return ["geral"].concat(FILIAIS.filter(function (f) { return titulos.some(function (x) { return x.f === f.id; }); }).map(function (f) { return f.id; }), ["clientes"]); }
+  function salvarUrl() {
+    var h = "#" + estado.aba;
+    if (estado.aba !== "geral" && estado.aba !== "clientes") {
+      var p = [];
+      if (estado.cat !== "Todas") p.push("cat=" + encodeURIComponent(estado.cat));
+      if (estado.status !== "todos") p.push("st=" + estado.status);
+      if (p.length) h += "?" + p.join("&");
+    }
+    try { history.replaceState(null, "", h); } catch (e) { /* ignora */ }
+  }
+  function lerUrl() {
+    var h = (location.hash || "").slice(1).split("?"), aba = h[0];
+    estado.aba = abasValidas().indexOf(aba) >= 0 ? aba : "geral";
+    (h[1] || "").split("&").forEach(function (kv) {
+      var p = kv.split("="), v = decodeURIComponent(p[1] || "");
+      if (p[0] === "cat" && CATEGORIAS.indexOf(v) >= 0) estado.cat = v;
+      if (p[0] === "st" && ["aberto", "pago", "verde", "amarelo", "vermelho", "nenhum"].indexOf(v) >= 0) estado.status = v;
+    });
+  }
   function montarAbas() {
-    var h = '<button class="aba" role="tab" data-aba="geral">Visão geral</button>';
+    var h = '<button class="aba" role="tab" id="aba-geral" aria-controls="conteudo" data-aba="geral">Visão geral</button>';
     FILIAIS.forEach(function (f) {
       if (!titulos.some(function (x) { return x.f === f.id; })) return;
-      h += '<button class="aba" role="tab" data-aba="' + f.id + '">' + f.nome + (f.id !== "OUT" ? " <small>" + f.id + "</small>" : "") + "</button>";
+      h += '<button class="aba" role="tab" id="aba-' + f.id + '" aria-controls="conteudo" data-aba="' + f.id + '">' + f.nome + (f.id !== "OUT" ? " <small>" + f.id + "</small>" : "") + "</button>";
     });
-    h += '<button class="aba" role="tab" data-aba="clientes">Classificar clientes</button>';
+    h += '<button class="aba" role="tab" id="aba-clientes" aria-controls="conteudo" data-aba="clientes">Classificar clientes</button>';
     document.getElementById("abas").innerHTML = h;
   }
   function render() {
     limparCharts();
     var el = document.getElementById("conteudo"); el.onclick = null;
-    [].forEach.call(document.querySelectorAll(".aba"), function (a) { a.classList.toggle("ativa", a.dataset.aba === estado.aba); a.setAttribute("aria-selected", a.dataset.aba === estado.aba); });
+    el.setAttribute("role", "tabpanel"); el.setAttribute("aria-labelledby", "aba-" + estado.aba);
+    [].forEach.call(document.querySelectorAll(".aba"), function (a) {
+      var on = a.dataset.aba === estado.aba;
+      a.classList.toggle("ativa", on); a.setAttribute("aria-selected", on); a.tabIndex = on ? 0 : -1;
+    });
     if (estado.aba === "geral") renderGeral(el);
     else if (estado.aba === "clientes") renderClientes(el);
     else renderFilial(el, estado.aba);
   }
-  function ir(aba) {
+  function ir(aba, foco) {
     if (aba !== estado.aba) { estado.cat = "Todas"; estado.status = "todos"; estado.busca = ""; estado.limite = 100; }
-    estado.aba = aba; try { history.replaceState(null, "", "#" + aba); } catch (e) { /* ignora */ }
+    estado.aba = aba; salvarUrl();
     render(); window.scrollTo(0, 0);
+    if (foco) document.getElementById("aba-" + aba).focus();
+    anunciar("Aba aberta: " + document.getElementById("aba-" + aba).textContent.trim());
   }
   document.addEventListener("click", function (e) {
     var b = e.target.closest("[data-aba]"); if (b) ir(b.dataset.aba);
+    if (e.target.closest("#conteudo [data-cat],#conteudo [data-st]")) salvarUrl();
   });
+  document.getElementById("abas").addEventListener("keydown", function (e) {
+    var ks = abasValidas(), i = ks.indexOf(estado.aba), n = null;
+    if (e.key === "ArrowRight") n = ks[(i + 1) % ks.length];
+    else if (e.key === "ArrowLeft") n = ks[(i - 1 + ks.length) % ks.length];
+    else if (e.key === "Home") n = ks[0];
+    else if (e.key === "End") n = ks[ks.length - 1];
+    if (n) { e.preventDefault(); ir(n, true); }
+  });
+  window.addEventListener("hashchange", function () { var a = estado.aba; lerUrl(); if (a !== estado.aba) render(); });
   document.getElementById("btnImprimir").onclick = function () { window.print(); };
   document.getElementById("dataRef").textContent = dataBR(DADOS.gerado);
 
   montarAbas();
-  var h0 = (location.hash || "").slice(1);
-  estado.aba = (h0 === "geral" || h0 === "clientes" || FILIAIS.some(function (f) { return f.id === h0; })) ? h0 : "geral";
+  lerUrl();
   render();
 })();
