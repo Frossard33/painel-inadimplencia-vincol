@@ -37,7 +37,7 @@ button,.chip,.aba{touch-action:manipulation}
 .topo-in{max-width:1280px;margin:0 auto;padding:14px 16px 6px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
 .marca{display:flex;align-items:center;gap:12px}
 .logo{display:flex;align-items:center;min-height:44px}
-.logo img{height:44px;width:auto;display:block}
+.logo img{height:46px;width:auto;display:block}
 .wordmark{font-weight:900;font-style:italic;font-size:1.7rem;letter-spacing:1px;line-height:1;text-align:center;font-family:"Arial Black",Impact,sans-serif}
 .wordmark small{display:block;font-size:.55rem;font-weight:700;letter-spacing:.5px;margin-top:2px}
 .marca h1{font-size:1.25rem;font-weight:700;letter-spacing:.2px}
