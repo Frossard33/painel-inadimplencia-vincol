@@ -1,6 +1,7 @@
 import openpyxl,sys,re,json,datetime,collections
 src,out=sys.argv[1],sys.argv[2]
 MASK=True
+ZERADAS=["Cobrança Extrajudicial"]  # categorias exibidas com valor zero (dados ainda nao liberados); remova da lista para voltar a mostrar
 wb=openpyxl.load_workbook(src,data_only=True)
 def find(prefix):
     return [w for w in wb if w.title.startswith(prefix)]
@@ -69,6 +70,7 @@ for ws in wb:
         n0=len(pend)
         for r in rows(ws): pend.append(mk(r,cat,T))
         print(cat,len(pend)-n0,round(sum(x["sal"] for x in pend[n0:])))
+out_rows=[x for x in out_rows if x["c"] not in ZERADAS]
 seen=collections.Counter()
 for x in out_rows: seen[(x['fo'],x['tit'],x['par'],x['v'],x['sal'])]+=1
 dups=sum(1 for k,v in seen.items() if v>1)
