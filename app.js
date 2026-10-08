@@ -153,14 +153,18 @@
       options: { maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (c) { return " " + R(c.parsed.y); } } } },
         scales: { y: { ticks: { callback: function (v) { return Rk(v); } } } } } });
   }
-  function gTop(id, arr, n) {
-    var t = topDevedores(arr, n);
+  function gTop(id, arr, n, pagos) {
+    var t;
+    if (pagos) {
+      var g = agrupar(arr.filter(function (x) { return x.pago; }), function (x) { return x.cod; });
+      t = Object.keys(g).map(function (k) { return { cli: g[k][0].cli, aberto: soma(g[k], "recebido") }; }).sort(function (a, b) { return b.aberto - a.aberto; }).slice(0, n);
+    } else t = topDevedores(arr, n);
+    var rot = pagos ? "Recebido" : "Em aberto";
     grafico(id, { type: "bar", data: { labels: t.map(function (x) { return x.cli.length > 28 ? x.cli.slice(0, 27) + "…" : x.cli; }),
-        datasets: [{ label: "Em aberto", data: t.map(function (x) { return x.aberto; }), backgroundColor: "#D6322E", borderRadius: 4 }] },
-      options: { indexAxis: "y", maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (c) { return " " + R(c.parsed.x); } } } },
+        datasets: [{ label: rot, data: t.map(function (x) { return x.aberto; }), backgroundColor: pagos ? "#1E9E5A" : "#D6322E", borderRadius: 4 }] },
+      options: { indexAxis: "y", maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (c) { return " " + rot + ": " + R(c.parsed.x); } } } },
         scales: { x: { ticks: { callback: function (v) { return Rk(v); } } } } } });
-  }
-  function gCategoriaRosca(id, arr) {
+  }  function gCategoriaRosca(id, arr) {
     var g = agrupar(arr, function (x) { return x.c; });
     var cats = CATEGORIAS.filter(function (c) { return g[c] && soma(g[c], "aberto") > 0; });
     grafico(id, { type: "doughnut", data: { labels: cats, datasets: [{ data: cats.map(function (c) { return soma(g[c], "aberto"); }),
@@ -241,13 +245,17 @@
   }
 
   /* ---------- Filial ---------- */
+  function passaStatus(x) {
+    if (estado.status === "aberto") return !x.pago;
+    if (estado.status === "atrasado") return !x.pago && x.dias > 0;
+    if (estado.status === "pago") return x.pago;
+    return true;
+  }
   function filtrar(base) {
     var q = estado.busca.trim().toLowerCase();
     return base.filter(function (x) {
       if (x.c !== estado.cat) return false;
-      if (estado.status === "aberto" && x.pago) return false;
-      if (estado.status === "pago" && !x.pago) return false;
-      if (["verde", "amarelo", "vermelho", "nenhum"].indexOf(estado.status) >= 0 && (x.pago || cor(x.cod) !== estado.status)) return false;
+      if (!passaStatus(x)) return false;
       if (q && (x.cli + " " + x.cod + " " + x.tit).toLowerCase().indexOf(q) < 0) return false;
       return true;
     });
@@ -278,8 +286,7 @@
     function sec() { return base.filter(function (x) { return x.c === estado.cat; }); }
     function chips() {
       el.querySelector("#zCat").innerHTML = tipos.map(function (c) { return quad(c, base.filter(function (x) { return x.c === c; }), estado.cat === c); }).join("");
-      var sts = [["todos", "Todos"], ["aberto", "Em aberto"], ["pago", "Pagos ✔"]];
-      if (estado.cat === BOLETO) sts = sts.concat([["verde", "● Verde"], ["amarelo", "● Amarelo"], ["vermelho", "● Vermelho"], ["nenhum", "Sem classificação"]]);
+      var sts = [["todos", "Todos"], ["aberto", "Em aberto"], ["atrasado", "Atrasado"], ["pago", "Pagos ✔"]];
       el.querySelector("#zStatus").innerHTML = sts.map(function (s) { return '<button class="chip ' + (estado.status === s[0] ? "on" : "") + '" data-st="' + s[0] + '">' + s[1] + "</button>"; }).join("");
       el.querySelector("#zLeg").innerHTML = estado.cat === BOLETO ? '<span><i class="dot verde"></i> Sempre paga</span><span><i class="dot amarelo"></i> Paga, mas com atraso</span><span><i class="dot vermelho"></i> Nunca paga</span><span><i class="dot"></i> Sem classificação (altere em “Classificar clientes”)</span>' : "";
     }
@@ -291,15 +298,22 @@
         el.querySelector("#zGraf").innerHTML = ""; return;
       }
       el.querySelector("#zKpi").innerHTML = '<p class="explica" style="margin:0 0 8px">' + esc(DESCR[estado.cat] || "") + "</p>" + kpisHtml(resumo(arr), eb) + insights(arr, eb ? "Os boletos desta filial" : estado.cat + " nesta filial");
-      el.querySelector("#zGraf").innerHTML = graficosSecao("f", arr, eb);
-      desenharSecao("f", arr, eb);
+      var sa = arr.filter(passaStatus);
+      if (!sa.length) { el.querySelector("#zGraf").innerHTML = '<div class="aviso">Nenhum título com este filtro nesta filial.</div>'; return; }
+      if (estado.status === "pago") {
+        el.querySelector("#zGraf").innerHTML = cardGraf("Quem já pagou", "Clientes com maior valor já recebido (títulos pagos).", "fTopPagos", "c12", true);
+        gTop("fTopPagos", sa, 10, true);
+      } else {
+        el.querySelector("#zGraf").innerHTML = graficosSecao("f", sa, eb);
+        desenharSecao("f", sa, eb);
+      }
     }
     function atualizaTabela() {
       var eb = estado.cat === BOLETO, lista = ordenar(filtrar(base)), vis = lista.slice(0, estado.limite), nc = eb ? 7 : 6;
       var h = '<div class="tabela-wrap"><table><thead><tr><th>Cliente / Fornecedor</th><th>Título</th><th>Vencimento</th><th class="num">Atraso</th><th class="num">Valor do título</th><th class="num">Situação / valor</th>' + (eb ? "<th>Semáforo</th>" : "") + "</tr></thead><tbody>";
       if (!lista.length) h += '<tr><td colspan="' + nc + '" class="vazio">Nenhum título encontrado. Tente limpar a busca ou escolher “Todos” nos filtros.</td></tr>';
       vis.forEach(function (x) {
-        var c = x.pago ? "verde" : cor(x.cod);
+        var c = cor(x.cod);
         h += '<tr class="' + (x.pago ? "pago" : "") + '"><td class="cli"><span class="nome" title="' + esc(x.cli) + '">' + esc(x.cli) + "</span><small>Cód. " + esc(x.cod) + "</small></td>" +
           '<td data-label="Título">' + esc(x.tit) + (x.par ? "<small> parc. " + esc(x.par) + "</small>" : "") + "</td>" +
           '<td data-label="Vencimento">' + dataBR(x.v) + '</td><td class="num" data-label="Atraso">' + (x.pago ? "-" : diasTxt(x.dias)) + '</td><td class="num" data-label="Valor do título">' + R(x.val) + "</td>" +
@@ -435,7 +449,7 @@
     (h[1] || "").split("&").forEach(function (kv) {
       var p = kv.split("="), v = decodeURIComponent(p[1] || "");
       if (p[0] === "cat" && CATEGORIAS.indexOf(v) >= 0) estado.cat = v;
-      if (p[0] === "st" && ["aberto", "pago", "verde", "amarelo", "vermelho", "nenhum"].indexOf(v) >= 0) estado.status = v;
+      if (p[0] === "st" && ["aberto", "atrasado", "pago"].indexOf(v) >= 0) estado.status = v;
     });
   }
   function montarAbas() {
