@@ -46,12 +46,17 @@ for pre,cat in TABS:
     ws=[w for w in wb if w.title.startswith(pre)]
     assert len(ws)==1,(pre,[w.title for w in ws])
     for r in rows(ws[0]):
-        out_rows.append(mk(r,cat,ws[0].title))
+        c2=cat
+        if pre=="Dív": c2="Cobrança Extra" if str(r.get("STATUS")).upper().startswith("COBRANCA EXTRA") else "Dívida Antiga"
+        out_rows.append(mk(r,c2,ws[0].title))
 for ws in find("Cobran"):
     for r in rows(ws): out_rows.append(mk(r,"Boletos",ws.title))
 for r in rows(wb['Base de dados']):
     if r.get('STATUS')=='TESOURARIA': out_rows.append(mk(r,"Tesouraria","Base de dados"))
-# fix: keep only receivables (all chosen tabs are RECEBER)
+pagar=[]
+for ws in find("Contas a Pagar"):
+    for r in rows(ws): pagar.append(mk(r,"Contas a Pagar",ws.title))
+print("pagar",len(pagar),round(sum(x["sal"] for x in pagar)))
 seen=collections.Counter()
 for x in out_rows: seen[(x['fo'],x['tit'],x['par'],x['v'],x['sal'])]+=1
 dups=sum(1 for k,v in seen.items() if v>1)
@@ -59,4 +64,4 @@ print("rows",len(out_rows),"dup keys",dups)
 for c,n in collections.Counter(x['c'] for x in out_rows).items(): print(c,n,round(sum(x['sal'] for x in out_rows if x['c']==c)))
 print(collections.Counter(x['f'] for x in out_rows))
 print("missing venc",sum(1 for x in out_rows if not x['v']),"zero sal",sum(1 for x in out_rows if x['sal']<=0))
-open(out,'w',encoding='utf-8').write("window.DADOS="+json.dumps({"gerado":"2026-10-06","titulos":out_rows},ensure_ascii=False,separators=(',',':'))+";\n")
+open(out,'w',encoding='utf-8').write("window.DADOS="+json.dumps({"gerado":"2026-10-06","titulos":out_rows,"pagar":pagar},ensure_ascii=False,separators=(',',':'))+";\n")

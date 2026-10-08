@@ -181,3 +181,8 @@ select{border:1px solid var(--borda);border-radius:8px;padding:7px 10px;font:inh
 .quad.on b,.quad.on small{color:#fff}
 .quad.boleto{border-top-color:var(--marca)}
 .filial-card small{display:block}
+.subtit{font-size:1.1rem;color:var(--azul-escuro);margin:18px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--marca)}
+.quad.vazio{background:#F7F8FA;border-style:dashed;border-top-style:dashed;cursor:default;color:var(--texto-suave)}
+.quad.vazio b{color:var(--texto-suave)}
+.quad.vazio:hover{box-shadow:none;border-color:var(--borda)}
+.controles b{color:var(--azul-escuro)}
