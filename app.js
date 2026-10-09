@@ -59,7 +59,7 @@
   function mapa(t) {
     var venc = new Date(t.v + "T00:00:00");
     var dias = Math.floor((REF - venc) / 86400000);
-    var pago = !!t.pg;
+    var pago = !!t.pg || !!t.pago;
     return {
       f: t.f, c: t.c, tit: t.tit, par: t.par, cod: t.cod, cli: t.cli, v: t.v, dias: dias,
       val: t.val, pago: pago, pg: t.pg, d: t.d,
@@ -467,7 +467,7 @@
         h += '<tr class="' + (eb && estado.pintar ? "linha-" + c : (x.pago ? "pago" : "")) + '"><td class="cli"><span class="nome" title="' + esc(x.cli) + '">' + esc(x.cli) + "</span><small>Cód. " + esc(x.cod) + "</small></td>" +
           '<td data-label="Título">' + esc(x.tit) + (x.par ? "<small> parc. " + esc(x.par) + "</small>" : "") + (x.d && PEND.indexOf(x.c) >= 0 ? "<small>" + (x.d === "PAGAR" ? "A pagar" : "A receber") + "</small>" : "") + "</td>" +
           '<td data-label="Vencimento">' + dataBR(x.v) + '</td><td class="num" data-label="Atraso">' + (x.pago ? "-" : diasTxt(x.dias)) + '</td><td class="num" data-label="Valor do título">' + R(x.val) + "</td>" +
-          '<td class="num" data-label="Situação">' + (x.pago ? '<span class="selo pago">Pago em ' + dataBR(x.pg) + "</span><br>" + R(x.recebido) : '<span class="selo aberto">Em aberto</span><br>' + R(x.aberto)) + "</td>" +
+          '<td class="num" data-label="Situação">' + (x.pago ? '<span class="selo pago">Pago' + (x.pg ? " em " + dataBR(x.pg) : "") + "</span><br>" + R(x.recebido) : '<span class="selo aberto">Em aberto</span><br>' + R(x.aberto)) + "</td>" +
           (eb ? '<td data-label="Classificação" class="sem-cel sem-' + c + '"><span class="sem-txt">' + NOMES_COR[c] + '</span> <button type="button" class="clas-btn" data-clas="' + esc(x.cod) + '" aria-haspopup="menu" aria-label="Classificar ' + esc(x.cli) + '">' + (c === "nenhum" ? "Classificar" : "Alterar") + ' ▾</button></td>' : "") + "</tr>";
       });
       h += "</tbody></table></div>";

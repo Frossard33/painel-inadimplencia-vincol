@@ -61,12 +61,20 @@ def aba(pre):
     return r[0]
 
 
+def azul(c):
+    """Celula pintada de azul claro (tema 4) = titulo ja pago, marcado pelo financeiro."""
+    f = c.fill
+    return bool(f.fill_type) and f.fgColor.type == "theme" and f.fgColor.theme == 4
+
+
 def linhas(ws):
     hdr = [c.value for c in ws[1]]
-    for r in ws.iter_rows(min_row=2, values_only=True):
-        if r[0] is None:
+    for row in ws.iter_rows(min_row=2):
+        if row[0].value is None:
             continue
-        yield dict(zip(hdr, r))
+        d = dict(zip(hdr, [c.value for c in row]))
+        d["_azul"] = azul(row[4])
+        yield d
 
 
 def mk(r, cat, tab):
@@ -74,7 +82,10 @@ def mk(r, cat, tab):
     sal = num(r.get("VL_SALDO"))
     vp = num(r.get("Valor")) or sal if pag else 0
     pagar = "pagar" in norm(r.get("DS_TIPOCONTA") or "") or cat == "Contas a Pagar"
-    return dict(f="01", c=cat, t=tab, d="PAGAR" if pagar else "RECEBER",
+    marcado = bool(r.get("_azul")) and not pag   # azul na planilha = pago (sem data informada)
+    if marcado:
+        vp = sal
+    return dict(f="01", c=cat, t=tab, **({"pago": 1} if marcado else {}), d="PAGAR" if pagar else "RECEBER",
                 tit=str(r.get("NR_DOCUMENTO") or r.get("NR_LANCAMENTO")).strip(), par=r.get("NR_PARCELA"),
                 cod=str(r.get("CD_PESSOA")).strip(), cli=nome(r.get("NM_PESSOA")), v=dt(r.get("DT_VENCIMENTO")),
                 val=num(r.get("VL_DOCUMENTO")) or sal, sal=sal, pg=pag, vp=vp)
