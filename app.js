@@ -250,11 +250,11 @@
   function quadVazio(cat) {
     return '<div class="quad vazio" aria-disabled="true"><b>' + esc(cat) + '</b><span class="v">—</span><small>A alimentar</small></div>';
   }
-  function gruposQuads(arrDe, ativo) {
+  function gruposQuads(arrDe, ativo, extraPend) {
     return '<h3 class="subtit">Inadimplência</h3><div class="quads" role="group" aria-label="Inadimplência por tipo de título">' +
       CATEGORIAS.map(function (c) { return quad(c, arrDe(c), c === ativo); }).join("") + "</div>" +
       '<h3 class="subtit">Pendência</h3><div class="quads" role="group" aria-label="Pendência por tipo de título">' +
-      PEND.map(function (c) { return quad(c, arrDe(c), c === ativo); }).join("") + '</div><p class="explica">' + esc(sis.pendTxt) + "</p>";
+      PEND.map(function (c) { return quad(c, arrDe(c), c === ativo); }).join("") + "</div>" + (extraPend || "") + '<p class="explica">' + esc(sis.pendTxt) + "</p>";
   }
   function renderGeral(el) {
     if (CATEGORIAS.indexOf(estado.secGeral) < 0 && PEND.indexOf(estado.secGeral) < 0) estado.secGeral = BOLETO;
@@ -271,10 +271,10 @@
     var DEMORADOS = ["Judicial", "Dívida Antiga"];
     var recAll = todos.filter(function (x) { return x.d !== "PAGAR"; });
     var rGeral = resumo(recAll.filter(function (x) { return DEMORADOS.indexOf(x.c) < 0; })), rDem = resumo(recAll.filter(function (x) { return DEMORADOS.indexOf(x.c) >= 0; }));
-    html += '<div class="kpis kpis-total">' +
+    var totais = '<div class="kpis kpis-total">' +
       kpi("A receber (tudo junto)", R(rGeral.aberto), rGeral.nAbertos.toLocaleString("pt-BR") + " título(s) em aberto de " + rGeral.nClientes + " cliente(s). Não inclui Judicial, Dívida Antiga nem contas a pagar.", "vermelho") +
       kpi("Judicial + Dívida Antiga", R(rDem.aberto), rDem.nAbertos.toLocaleString("pt-BR") + " título(s) em aberto de " + rDem.nClientes + " cliente(s). Valores de recuperação mais difícil.", "amarelo") + "</div>";
-    html += gruposQuads(function (c) { return todos.filter(function (x) { return x.c === c; }); }, estado.secGeral);
+    html += gruposQuads(function (c) { return todos.filter(function (x) { return x.c === c; }); }, estado.secGeral, totais);
     html += '<div class="titulo-secao"><h3>' + esc(estado.secGeral) + '</h3><p>' + esc(DESCR[estado.secGeral] || "") + "</p></div>" +
       kpisHtml(resumo(sel), eb) + insights(sel, eb ? "Os boletos" : estado.secGeral) +
       '<div class="grade">' + (sis.semFilial ? "" : cardGraf(esc(estado.secGeral) + (eb ? ": em aberto × recebido por filial" : ": em aberto por filial"), eb ? "Vermelho é o que falta receber; verde é o que já foi pago." : "Quanto cada filial tem para receber neste tipo de título.", "sFilial", "c12")) + graficosSecao("s", sel, eb) + "</div>" +
