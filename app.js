@@ -267,6 +267,13 @@
       '<li><b>Atraso</b> é quantos dias passaram desde o vencimento. Quanto maior o atraso, mais difícil de receber.</li>' +
       '<li><b>Classificação</b> (só para clientes de boleto): verde = em dia (cliente que sempre paga) · amarelo = em atraso (cliente que paga, mas com atraso) · vermelho = inadimplente (cliente que nunca paga).</li>' +
       '<li>' + (sis.semFilial ? 'Use a aba “Todos os títulos” no topo. Nela' : 'Use as abas no topo para ver cada filial. Em cada filial') + ' dá para trocar o tipo de título, buscar um cliente e baixar a lista para Excel.</li></ul></details>';
+    /* Totais gerais a receber: tudo junto, menos Judicial e Dívida Antiga (que ficam em outro card). Contas a pagar não entram. */
+    var DEMORADOS = ["Judicial", "Dívida Antiga"];
+    var recAll = todos.filter(function (x) { return x.d !== "PAGAR"; });
+    var rGeral = resumo(recAll.filter(function (x) { return DEMORADOS.indexOf(x.c) < 0; })), rDem = resumo(recAll.filter(function (x) { return DEMORADOS.indexOf(x.c) >= 0; }));
+    html += '<div class="kpis kpis-total">' +
+      kpi("A receber (tudo junto)", R(rGeral.aberto), rGeral.nAbertos.toLocaleString("pt-BR") + " título(s) em aberto de " + rGeral.nClientes + " cliente(s). Não inclui Judicial, Dívida Antiga nem contas a pagar.", "vermelho") +
+      kpi("Judicial + Dívida Antiga", R(rDem.aberto), rDem.nAbertos.toLocaleString("pt-BR") + " título(s) em aberto de " + rDem.nClientes + " cliente(s). Valores de recuperação mais difícil.", "amarelo") + "</div>";
     html += gruposQuads(function (c) { return todos.filter(function (x) { return x.c === c; }); }, estado.secGeral);
     html += '<div class="titulo-secao"><h3>' + esc(estado.secGeral) + '</h3><p>' + esc(DESCR[estado.secGeral] || "") + "</p></div>" +
       kpisHtml(resumo(sel), eb) + insights(sel, eb ? "Os boletos" : estado.secGeral) +
