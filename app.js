@@ -2,18 +2,32 @@
   "use strict";
 
   /* ---------- Dados ---------- */
-  var FILIAIS = [
-    { id: "01", nome: "Três Poços" },
-    { id: "02", nome: "Ponte Alta" },
-    { id: "03", nome: "Barra Mansa" },
-    { id: "04", nome: "Beira Rio" },
-    { id: "06", nome: "Resende" },
-    { id: "OUT", nome: "Outras filiais (05 e 08)" }
-  ];
   var BOLETO = "Boletos";
-  var CATEGORIAS = [BOLETO, "Judicial", "Cobrança Extrajudicial", "Dívida Antiga", "Órgão Público", "Depósito"];
-  var PEND = ["Frota", "Auditoria", "Tesouraria", "Permuta", "Pneustore", "Conciliação Vanessa", "Conciliação Marla", "Pendências Diversas", "Mercado Livre Koncilli", "Mercado Livre Conta", "Contas a Pagar"];
   var CORES_CAT = ["#E02727", "#1F2933", "#3B82C4", "#F5B800", "#8FA3B8", "#7A1F5C", "#3FA7A0", "#A8B0BB", "#C77D2E", "#5E6B7A", "#2F6B4F"];
+  /* Cada sistema (Tecinco, Junsoft) tem seus dados, seus tipos de título e suas classificações de clientes */
+  var SISTEMAS = {
+    tecinco: {
+      nome: "Tecinco", dados: function () { return window.DADOS; }, classes: "CLASSIFICACOES", ls: "vincol_classificacoes_v1",
+      filiais: [
+        { id: "01", nome: "Três Poços" }, { id: "02", nome: "Ponte Alta" }, { id: "03", nome: "Barra Mansa" },
+        { id: "04", nome: "Beira Rio" }, { id: "06", nome: "Resende" }, { id: "OUT", nome: "Outras filiais (05 e 08)" }
+      ],
+      categorias: [BOLETO, "Judicial", "Cobrança Extrajudicial", "Dívida Antiga", "Órgão Público", "Depósito"],
+      pend: ["Frota", "Auditoria", "Tesouraria", "Permuta", "Pneustore", "Conciliação Vanessa", "Conciliação Marla", "Pendências Diversas", "Mercado Livre Koncilli", "Mercado Livre Conta", "Contas a Pagar"],
+      pendTxt: "Pendência reúne as demais abas da planilha: Frota, Auditoria, Tesouraria, Permuta, Pneustore, conciliações, pendências diversas, Mercado Livre e contas a pagar. Não são boletos.",
+      inadTxt: "Judicial, Cobrança Extrajudicial, Dívida Antiga, Órgão Público e Depósito"
+    },
+    junsoft: {
+      nome: "Junsoft", dados: function () { return window.DADOS_JUNSOFT; }, classes: "CLASSIFICACOES_JUNSOFT", ls: "vincol_classificacoes_junsoft_v1",
+      semFilial: true,
+      filiais: [{ id: "01", nome: "Todos os títulos" }],
+      categorias: [BOLETO, "Judicial", "Cobrança Extrajudicial", "Dívida Antiga"],
+      pend: ["Clientes em Carteira", "Depósito", "Diversos", "Borrachas Vipal", "Contas a Pagar"],
+      pendTxt: "Pendência reúne as demais abas da planilha: Clientes em carteira, Depósito, Diversos, Borrachas Vipal e Contas a pagar. Contas a pagar é dinheiro que a empresa deve, não que recebe; fica aqui como pendência de baixa. Não são boletos.",
+      inadTxt: "Judicial, Cobrança Extrajudicial e Dívida Antiga"
+    }
+  };
+  var sis = null, FILIAIS, CATEGORIAS, PEND, DADOS, REF, receber, titulos, pagar, pend, todos;
   var DESCR = {
     "Boletos": "Boletos em cobrança administrativa. É o único tipo considerado boleto.",
     "Judicial": "Títulos em cobrança judicial. Não são boletos.",
@@ -31,14 +45,17 @@
     "Depósito": "Títulos pagos por depósito. Não são boletos.",
     "Pneustore": "Títulos da Pneustore. Não são boletos.",
     "Permuta": "Títulos pagos por permuta (troca). Não são boletos.",
-    "Tesouraria": "Títulos acompanhados pela tesouraria. Não são boletos."
+    "Tesouraria": "Títulos acompanhados pela tesouraria. Não são boletos.",
+    "Clientes em Carteira": "Títulos de clientes em carteira (pagos por cartão ou débito). Não são boletos.",
+    "Diversos": "Títulos diversos a receber. Não são boletos.",
+    "Borrachas Vipal": "Valores da Borrachas Vipal Nordeste (pagamentos parciais). Não são boletos."
   };
   var NOMES_COR = { verde: "Em dia", amarelo: "Em atraso", vermelho: "Inadimplente", nenhum: "Sem classificação" };
   var COR_HEX = { verde: "#1E9E5A", amarelo: "#F2B705", vermelho: "#D6322E", nenhum: "#B8C1CF" };
   var FAIXAS = ["A vencer", "1 a 30 dias", "31 a 60 dias", "61 a 90 dias", "Mais de 90 dias"];
   var FAIXA_CORES = ["#9AA5B1", "#F2B705", "#F28C28", "#D6322E", "#8E1B17"];
 
-  var REF = new Date(DADOS.gerado + "T00:00:00");
+  function REFdata() { return new Date(DADOS.gerado + "T00:00:00"); }
   function mapa(t) {
     var venc = new Date(t.v + "T00:00:00");
     var dias = Math.floor((REF - venc) / 86400000);
@@ -50,11 +67,18 @@
       recebido: pago ? t.vp : 0
     };
   }
-  var receber = DADOS.titulos.map(mapa);
-  var titulos = receber.filter(function (x) { return CATEGORIAS.indexOf(x.c) >= 0; });
-  var pagar = (DADOS.pagar || []).map(mapa);
-  var pend = receber.filter(function (x) { return PEND.indexOf(x.c) >= 0; }).concat((DADOS.pend || []).map(mapa), pagar);
-  var todos = titulos.concat(pend);
+  function carregar(id) {
+    sis = SISTEMAS[id]; sis.id = id;
+    FILIAIS = sis.filiais; CATEGORIAS = sis.categorias; PEND = sis.pend; DADOS = sis.dados();
+    REF = REFdata();
+    receber = DADOS.titulos.map(mapa);
+    titulos = receber.filter(function (x) { return CATEGORIAS.indexOf(x.c) >= 0; });
+    pagar = (DADOS.pagar || []).map(mapa);
+    pend = receber.filter(function (x) { return PEND.indexOf(x.c) >= 0; }).concat((DADOS.pend || []).map(mapa), pagar);
+    todos = titulos.concat(pend);
+    LS_KEY = sis.ls;
+    try { locais = JSON.parse(localStorage.getItem(LS_KEY) || "{}") || {}; } catch (e) { locais = {}; }
+  }
 
   /* ---------- Utilidades ---------- */
   var brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -88,22 +112,25 @@
   var pintarLS = "vincol_pintar_v1", pintarIni = true;
   try { pintarIni = localStorage.getItem(pintarLS) !== "0"; } catch (e) { pintarIni = true; }
   var locais = {};
-  try { locais = JSON.parse(localStorage.getItem(LS_KEY) || "{}") || {}; } catch (e) { locais = {}; }
   function salvarLocais() { try { localStorage.setItem(LS_KEY, JSON.stringify(locais)); } catch (e) { /* sem armazenamento */ } }
+  function publicadas() { return window[sis.classes] || {}; }
   function cor(cod) {
     if (Object.prototype.hasOwnProperty.call(locais, cod)) return locais[cod] || "nenhum";
-    return (window.CLASSIFICACOES && window.CLASSIFICACOES[cod]) || "nenhum";
+    return publicadas()[cod] || "nenhum";
   }
   function setCor(cod, c) {
-    var base = (window.CLASSIFICACOES && window.CLASSIFICACOES[cod]) || "";
+    var base = publicadas()[cod] || "";
     if (c === "nenhum") c = "";
     if (c === base) delete locais[cod]; else locais[cod] = c;
     salvarLocais();
   }
-  function todasClassificacoes() {
-    var o = {}, k;
-    for (k in (window.CLASSIFICACOES || {})) o[k] = window.CLASSIFICACOES[k];
-    for (k in locais) { if (locais[k]) o[k] = locais[k]; else delete o[k]; }
+  /* Classificações publicadas + alterações locais de um sistema (o arquivo ratings.js leva os dois sistemas) */
+  function todasClassificacoes(id) {
+    var S = SISTEMAS[id], o = {}, k, loc = {};
+    if (S === sis) loc = locais;
+    else { try { loc = JSON.parse(localStorage.getItem(S.ls) || "{}") || {}; } catch (e) { loc = {}; } }
+    for (k in (window[S.classes] || {})) o[k] = window[S.classes][k];
+    for (k in loc) { if (loc[k]) o[k] = loc[k]; else delete o[k]; }
     return o;
   }
 
@@ -227,32 +254,32 @@
     return '<h3 class="subtit">Inadimplência</h3><div class="quads" role="group" aria-label="Inadimplência por tipo de título">' +
       CATEGORIAS.map(function (c) { return quad(c, arrDe(c), c === ativo); }).join("") + "</div>" +
       '<h3 class="subtit">Pendência</h3><div class="quads" role="group" aria-label="Pendência por tipo de título">' +
-      PEND.map(function (c) { return quad(c, arrDe(c), c === ativo); }).join("") + '</div><p class="explica">Pendência reúne as demais abas da planilha: Frota, Auditoria, Tesouraria, Permuta, Pneustore, conciliações, pendências diversas, Mercado Livre e contas a pagar. Não são boletos.</p>';
+      PEND.map(function (c) { return quad(c, arrDe(c), c === ativo); }).join("") + '</div><p class="explica">' + esc(sis.pendTxt) + "</p>";
   }
   function renderGeral(el) {
     if (CATEGORIAS.indexOf(estado.secGeral) < 0 && PEND.indexOf(estado.secGeral) < 0) estado.secGeral = BOLETO;
     var eb = estado.secGeral === BOLETO;
     var sel = todos.filter(function (x) { return x.c === estado.secGeral; });
-    var html = '<div class="titulo-secao"><h2>Visão geral da empresa</h2><p>Todas as filiais juntas. Clique em uma filial para ver o detalhe.</p></div>' +
+    var html = '<div class="titulo-secao"><h2>Visão geral da empresa · ' + sis.nome + '</h2><p>' + (sis.semFilial ? 'Todos os títulos juntos. Use a aba “Todos os títulos” para ver a lista completa.' : 'Todas as filiais juntas. Clique em uma filial para ver o detalhe.') + '</p></div>' +
       '<details class="como"><summary>Como ler este painel (30 segundos)</summary><ul>' +
-      '<li><b>Boleto</b> é somente o que está na <b>Cobrança Administrativa</b>. Judicial, Cobrança Extrajudicial, Dívida Antiga, Órgão Público e Depósito <b>não são boletos</b> e ficam separados, cada um no seu quadro.</li>' +
+      '<li><b>Boleto</b> é somente o que está na <b>Cobrança Administrativa</b>. ' + sis.inadTxt + ' <b>não são boletos</b> e ficam separados, cada um no seu quadro.</li>' +
       '<li><b>Em aberto</b> é o dinheiro que os clientes deviam pagar e ainda não pagaram. <b>Recebido</b> é o que já entrou (data de pagamento preenchida na planilha).</li>' +
       '<li><b>Atraso</b> é quantos dias passaram desde o vencimento. Quanto maior o atraso, mais difícil de receber.</li>' +
       '<li><b>Classificação</b> (só para clientes de boleto): verde = em dia (cliente que sempre paga) · amarelo = em atraso (cliente que paga, mas com atraso) · vermelho = inadimplente (cliente que nunca paga).</li>' +
-      '<li>Use as abas no topo para ver cada filial. Em cada filial dá para trocar o tipo de título, buscar um cliente e baixar a lista para Excel.</li></ul></details>';
+      '<li>' + (sis.semFilial ? 'Use a aba “Todos os títulos” no topo. Nela' : 'Use as abas no topo para ver cada filial. Em cada filial') + ' dá para trocar o tipo de título, buscar um cliente e baixar a lista para Excel.</li></ul></details>';
     html += gruposQuads(function (c) { return todos.filter(function (x) { return x.c === c; }); }, estado.secGeral);
     html += '<div class="titulo-secao"><h3>' + esc(estado.secGeral) + '</h3><p>' + esc(DESCR[estado.secGeral] || "") + "</p></div>" +
       kpisHtml(resumo(sel), eb) + insights(sel, eb ? "Os boletos" : estado.secGeral) +
-      '<div class="grade">' + cardGraf(esc(estado.secGeral) + (eb ? ": em aberto × recebido por filial" : ": em aberto por filial"), eb ? "Vermelho é o que falta receber; verde é o que já foi pago." : "Quanto cada filial tem para receber neste tipo de título.", "sFilial", "c12") + graficosSecao("s", sel, eb) + "</div>" +
+      '<div class="grade">' + (sis.semFilial ? "" : cardGraf(esc(estado.secGeral) + (eb ? ": em aberto × recebido por filial" : ": em aberto por filial"), eb ? "Vermelho é o que falta receber; verde é o que já foi pago." : "Quanto cada filial tem para receber neste tipo de título.", "sFilial", "c12")) + graficosSecao("s", sel, eb) + "</div>" +
       '<div class="grade">' + cardGraf("Quanto cada tipo representa", "Valor em aberto de cada tipo de título. Os boletos aparecem em vermelho; os demais tipos (que não são boletos) em cinza-azulado.", "gTipos", "c12") + "</div>" +
-      '<div class="card"><h3>Filiais</h3><p class="explica">Clique para abrir o detalhe de cada uma.</p><div class="filiais">' +
+      (sis.semFilial ? "" : '<div class="card"><h3>Filiais</h3><p class="explica">Clique para abrir o detalhe de cada uma.</p><div class="filiais">' +
       FILIAIS.map(function (f) {
         var a = titulos.filter(function (x) { return x.f === f.id; }); if (!a.length) return "";
         var b = a.filter(function (x) { return x.c === BOLETO; }), rb = resumo(b), ro = resumo(a.filter(function (x) { return x.c !== BOLETO; }));
         return '<button class="filial-card" data-aba="' + f.id + '"><b>' + f.nome + (f.id !== "OUT" ? " (" + f.id + ")" : "") + '</b><small>Boletos em aberto</small><span class="v">' + R(rb.aberto) + "</span><small>" + rb.nAbertos + " boleto(s) · outros títulos: " + R(ro.aberto) + "</small></button>";
-      }).join("") + "</div></div>";
+      }).join("") + "</div></div>");
     el.innerHTML = html;
-    gPorFilial("sFilial", sel, eb);
+    if (!sis.semFilial) gPorFilial("sFilial", sel, eb);
     desenharSecao("s", sel, eb);
     gCategoriaBarras("gTipos", titulos);
   }
@@ -379,7 +406,7 @@
     var base = todos.filter(function (x) { return x.f === fid; });
     var tipos = CATEGORIAS.concat(PEND), pagarF = pagar.filter(function (x) { return x.f === fid; });
     if (tipos.indexOf(estado.cat) < 0) estado.cat = BOLETO;
-    el.innerHTML = '<div class="titulo-secao"><h2>' + (fid !== "OUT" ? "Filial " + fid + " · " : "") + nomeFilial(fid) + '</h2><p>Escolha o tipo de título. Só <b>Boletos</b> são boletos; os demais ficam separados. Posição em ' + dataBR(DADOS.gerado) + '</p></div>' +
+    el.innerHTML = '<div class="titulo-secao"><h2>' + (fid !== "OUT" && !sis.semFilial ? "Filial " + fid + " · " : "") + nomeFilial(fid) + '</h2><p>Escolha o tipo de título. Só <b>Boletos</b> são boletos; os demais ficam separados. Posição em ' + dataBR(DADOS.gerado) + '</p></div>' +
       '<div id="zCat"></div>' +
       '<div id="zKpi"></div>' +
       '<div class="controles"><div class="chips" id="zStatus"></div></div>' +
@@ -497,10 +524,10 @@
       'As escolhas ficam salvas neste navegador. Para que <b>todos</b> vejam, clique em “Baixar classificações” e envie o arquivo <code>ratings.js</code> para atualizar o repositório.</div>' +
       '<div id="zAviso"></div>' +
       '<div class="controles"><input type="search" id="cBusca" aria-label="Buscar cliente ou código" placeholder="Buscar cliente ou código…" autocomplete="off" spellcheck="false" value="' + esc(estado.cBusca) + '">' +
-      '<label>Filial: <select id="cFilial"><option value="todas">Todas</option>' + FILIAIS.map(function (f) { return '<option value="' + f.id + '">' + f.nome + "</option>"; }).join("") + "</select></label>" +
+      (sis.semFilial ? "" : '<label>Filial: <select id="cFilial"><option value="todas">Todas</option>' + FILIAIS.map(function (f) { return '<option value="' + f.id + '">' + f.nome + "</option>"; }).join("") + "</select></label>") +
       '<button class="btn primario" id="cBaixar" type="button">Baixar classificações</button><button class="btn" id="cDescartar" type="button">Descartar alterações locais</button></div>' +
       '<div class="controles"><div class="chips" id="cChips"></div></div><div id="zLista"></div>';
-    el.querySelector("#cFilial").value = estado.cFilial;
+    if (!sis.semFilial) el.querySelector("#cFilial").value = estado.cFilial;
 
     function aviso() {
       var n = Object.keys(locais).length;
@@ -520,11 +547,11 @@
         return '<button class="chip ' + (estado.cCor === s[0] ? "on" : "") + '" data-cc="' + s[0] + '">' + s[1] + ' <span class="n">' + n + "</span></button>";
       }).join("");
       var vis = l.slice(0, estado.cLimite);
-      var h = '<p class="explica" style="margin:0 0 8px;color:var(--texto-suave)">' + l.length.toLocaleString("pt-BR") + " cliente(s)</p><div class=\"tabela-wrap\"><table><thead><tr><th>Cliente</th><th>Filial(is)</th><th class=\"num\">Títulos em aberto</th><th class=\"num\">Total em aberto</th><th class=\"num\">Maior atraso</th><th>Classificação</th></tr></thead><tbody>";
-      if (!l.length) h += '<tr><td colspan="6" class="vazio">Nenhum cliente encontrado.</td></tr>';
+      var h = '<p class="explica" style="margin:0 0 8px;color:var(--texto-suave)">' + l.length.toLocaleString("pt-BR") + " cliente(s)</p><div class=\"tabela-wrap\"><table><thead><tr><th>Cliente</th>" + (sis.semFilial ? "" : "<th>Filial(is)</th>") + "<th class=\"num\">Títulos em aberto</th><th class=\"num\">Total em aberto</th><th class=\"num\">Maior atraso</th><th>Classificação</th></tr></thead><tbody>";
+      if (!l.length) h += '<tr><td colspan="' + (sis.semFilial ? 5 : 6) + '" class="vazio">Nenhum cliente encontrado.</td></tr>';
       vis.forEach(function (c) {
         var cc = cor(c.cod);
-        h += '<tr><td class="cli"><span class="nome" title="' + esc(c.cli) + '">' + esc(c.cli) + "</span><small>Cód. " + esc(c.cod) + (c.pagou ? ", já pagou título" : "") + '</small></td><td data-label="Filial(is)">' + c.filiais.map(function (f) { return f === "OUT" ? "Outras" : f; }).join(", ") + '</td><td class="num" data-label="Títulos em aberto">' + c.n + '</td><td class="num" data-label="Total em aberto">' + R(c.aberto) + '</td><td class="num" data-label="Maior atraso">' + (c.n ? diasTxt(c.dias) : "-") + "</td>" +
+        h += '<tr><td class="cli"><span class="nome" title="' + esc(c.cli) + '">' + esc(c.cli) + "</span><small>Cód. " + esc(c.cod) + (c.pagou ? ", já pagou título" : "") + '</small></td>' + (sis.semFilial ? "" : '<td data-label="Filial(is)">' + c.filiais.map(function (f) { return f === "OUT" ? "Outras" : f; }).join(", ") + "</td>") + '<td class="num" data-label="Títulos em aberto">' + c.n + '</td><td class="num" data-label="Total em aberto">' + R(c.aberto) + '</td><td class="num" data-label="Maior atraso">' + (c.n ? diasTxt(c.dias) : "-") + "</td>" +
           '<td data-label="Classificação"><span class="seletor" role="group" aria-label="Classificação de ' + esc(c.cli) + '" data-cod="' + esc(c.cod) + '">' +
           ["verde", "amarelo", "vermelho", "nenhum"].map(function (k) { return '<button type="button" class="s-' + k + (cc === k ? " on" : "") + '" data-c="' + k + '" aria-pressed="' + (cc === k) + '" aria-label="' + NOMES_COR[k] + '" title="' + NOMES_COR[k] + '"><i></i></button>'; }).join("") + "</span></td></tr>";
       });
@@ -546,11 +573,13 @@
       }
     };
     el.querySelector("#cBusca").oninput = function (e) { estado.cBusca = e.target.value; estado.cLimite = 100; lista(); };
-    el.querySelector("#cFilial").onchange = function (e) { estado.cFilial = e.target.value; estado.cLimite = 100; lista(); };
+    if (!sis.semFilial) el.querySelector("#cFilial").onchange = function (e) { estado.cFilial = e.target.value; estado.cLimite = 100; lista(); };
     el.querySelector("#cBaixar").onclick = function () {
-      var o = todasClassificacoes(), ks = Object.keys(o).sort();
-      var txt = "// Classificação dos clientes (semáforo). Chave = código do cliente.\n// Valores: \"verde\" (em dia), \"amarelo\" (em atraso), \"vermelho\" (inadimplente).\nwindow.CLASSIFICACOES = {\n" +
-        ks.map(function (k) { return '  "' + k + '": "' + o[k] + '"'; }).join(",\n") + "\n};\n";
+      var txt = "// Classificação dos clientes (semáforo). Chave = código do cliente.\n// Valores: \"verde\" (em dia), \"amarelo\" (em atraso), \"vermelho\" (inadimplente).\n";
+      Object.keys(SISTEMAS).forEach(function (id) {
+        var o = todasClassificacoes(id), ks = Object.keys(o).sort();
+        txt += "window." + SISTEMAS[id].classes + " = {\n" + ks.map(function (k) { return '  "' + k + '": "' + o[k] + '"'; }).join(",\n") + "\n};\n";
+      });
       baixar("ratings.js", txt, "text/javascript;charset=utf-8");
     };
     el.querySelector("#cDescartar").onclick = function () {
@@ -564,21 +593,23 @@
   function anunciar(txt) { var a = document.getElementById("anuncio"); if (a) a.textContent = txt; }
   function abasValidas() { return ["geral"].concat(FILIAIS.filter(function (f) { return titulos.some(function (x) { return x.f === f.id; }); }).map(function (f) { return f.id; }), ["clientes"]); }
   function salvarUrl() {
-    var h = "#" + estado.aba;
+    var h = "#" + estado.aba, p = [];
+    if (sis.id !== "tecinco") p.push("sis=" + sis.id);
     if (estado.aba !== "geral" && estado.aba !== "clientes") {
-      var p = [];
       if (estado.cat !== BOLETO) p.push("cat=" + encodeURIComponent(estado.cat));
       if (estado.status !== "todos") p.push("st=" + estado.status);
-      if (p.length) h += "?" + p.join("&");
     }
+    if (p.length) h += "?" + p.join("&");
     try { history.replaceState(null, "", h); } catch (e) { /* ignora */ }
   }
   function lerUrl() {
-    var h = (location.hash || "").slice(1).split("?"), aba = h[0];
+    var h = (location.hash || "").slice(1).split("?"), aba = h[0], novo = "tecinco";
+    (h[1] || "").split("&").forEach(function (kv) { var p = kv.split("="); if (p[0] === "sis" && SISTEMAS[p[1]] && SISTEMAS[p[1]].dados()) novo = p[1]; });
+    if (!sis || sis.id !== novo) { carregar(novo); montarAbas(); marcarSistema(); }
     estado.aba = abasValidas().indexOf(aba) >= 0 ? aba : "geral";
     (h[1] || "").split("&").forEach(function (kv) {
       var p = kv.split("="), v = decodeURIComponent(p[1] || "");
-      if (p[0] === "cat" && CATEGORIAS.indexOf(v) >= 0) estado.cat = v;
+      if (p[0] === "cat" && (CATEGORIAS.indexOf(v) >= 0 || PEND.indexOf(v) >= 0)) estado.cat = v;
       if (p[0] === "st" && ["aberto", "atrasado", "pago"].indexOf(v) >= 0) estado.status = v;
     });
   }
@@ -586,7 +617,7 @@
     var h = '<button class="aba" role="tab" id="aba-geral" aria-controls="conteudo" data-aba="geral">Visão geral</button>';
     FILIAIS.forEach(function (f) {
       if (!titulos.some(function (x) { return x.f === f.id; })) return;
-      h += '<button class="aba" role="tab" id="aba-' + f.id + '" aria-controls="conteudo" data-aba="' + f.id + '">' + f.nome + (f.id !== "OUT" ? " <small>" + f.id + "</small>" : "") + "</button>";
+      h += '<button class="aba" role="tab" id="aba-' + f.id + '" aria-controls="conteudo" data-aba="' + f.id + '">' + f.nome + (f.id !== "OUT" && !sis.semFilial ? " <small>" + f.id + "</small>" : "") + "</button>";
     });
     h += '<button class="aba" role="tab" id="aba-clientes" aria-controls="conteudo" data-aba="clientes">Classificar clientes</button>';
     document.getElementById("abas").innerHTML = h;
@@ -624,11 +655,37 @@
     else if (e.key === "End") n = ks[ks.length - 1];
     if (n) { e.preventDefault(); ir(n, true); }
   });
-  window.addEventListener("hashchange", function () { var a = estado.aba; lerUrl(); if (a !== estado.aba) render(); });
+  window.addEventListener("hashchange", function () { var a = estado.aba, s0 = sis.id; lerUrl(); if (a !== estado.aba || s0 !== sis.id) render(); });
   document.getElementById("btnImprimir").onclick = function () { window.print(); };
-  document.getElementById("dataRef").textContent = dataBR(DADOS.gerado);
 
+  /* ---------- Seletor de sistema (Tecinco / Junsoft) ---------- */
+  function marcarSistema() {
+    [].forEach.call(document.querySelectorAll("[data-sis]"), function (b) {
+      var on = b.dataset.sis === sis.id; b.classList.toggle("ativa", on); b.setAttribute("aria-pressed", on);
+    });
+    document.getElementById("dataRef").textContent = dataBR(DADOS.gerado);
+    var f = document.getElementById("fonteDados"); if (f) f.textContent = sis.nome;
+    document.title = "Painel de Inadimplência · Vincol Pneus · " + sis.nome;
+  }
+  function montarSistemas() {
+    var ids = Object.keys(SISTEMAS).filter(function (id) { return SISTEMAS[id].dados(); });
+    document.getElementById("sistemas").innerHTML = '<span class="sis-rot">Sistema:</span>' + ids.map(function (id) {
+      return '<button type="button" class="sis" data-sis="' + id + '" aria-pressed="false">' + SISTEMAS[id].nome + "</button>";
+    }).join("");
+  }
+  document.getElementById("sistemas").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-sis]"); if (!b || b.dataset.sis === sis.id) return;
+    fecharFiltro();
+    carregar(b.dataset.sis);
+    estado.aba = "geral"; estado.cat = BOLETO; estado.secGeral = BOLETO; estado.lanc = "receber"; estado.status = "todos"; estado.busca = ""; estado.limite = 100; estado.colFilt = {}; estado.ordemCol = null; estado.cBusca = ""; estado.cCor = "todos"; estado.cFilial = "todas";
+    montarAbas(); marcarSistema(); salvarUrl(); render(); window.scrollTo(0, 0);
+    anunciar("Sistema aberto: " + sis.nome);
+  });
+
+  carregar("tecinco");
+  montarSistemas();
   montarAbas();
   lerUrl();
+  marcarSistema();
   render();
 })();

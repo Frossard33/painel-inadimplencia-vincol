@@ -53,6 +53,11 @@ button,.chip,.aba{touch-action:manipulation}
 .posicao strong{background:rgba(0,0,0,.18)}
 
 /* Abas */
+.sistemas{max-width:1280px;margin:0 auto;padding:6px 12px 2px;display:flex;align-items:center;gap:6px}
+.sis-rot{color:#FFE3E3;font-size:.85rem;margin-right:2px}
+.sis{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.45);color:#fff;border-radius:999px;padding:6px 16px;font-size:.9rem;font-weight:600;cursor:pointer;min-height:36px}
+.sis:hover{background:rgba(255,255,255,.22)}
+.sis.ativa{background:#fff;color:var(--vermelho,#E02727);border-color:#fff}
 .abas{max-width:1280px;margin:0 auto;padding:0 12px;display:flex;gap:4px;overflow-x:auto;scrollbar-width:thin}
 .aba{background:transparent;border:0;color:#FFE3E3;padding:11px 14px;font-size:.92rem;font-weight:600;cursor:pointer;white-space:nowrap;border-bottom:3px solid transparent}
 .aba:hover{color:#fff}
@@ -139,7 +144,7 @@ select{border:1px solid var(--borda);border-radius:8px;padding:7px 10px;font:inh
 
 @media print{
   .topo{position:static;background:#fff;color:#000;box-shadow:none}
-  .topo-dir .btn,.abas,.controles,.mais,.seletor{display:none!important}
+  .topo-dir .btn,.abas,.sistemas,.controles,.mais,.seletor{display:none!important}
   .marca p,.marca h1{color:#000}
   body{background:#fff}
   .card,.kpi{break-inside:avoid}
@@ -152,6 +157,7 @@ select{border:1px solid var(--borda);border-radius:8px;padding:7px 10px;font:inh
   .wrap{padding:14px 12px 32px}
   .chip{padding:10px 14px;min-height:44px}
   .aba{padding:14px 14px;min-height:44px}
+  .sis{min-height:44px;padding:8px 18px}
   .btn{min-height:44px}
   input[type=search],select{min-height:44px;max-width:none}
   .seletor button{width:44px;height:44px}

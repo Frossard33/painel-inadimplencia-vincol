@@ -12,6 +12,12 @@ python tools/build_data.py "caminho/da/planilha.xlsx" data.js
 ```
 Depois envie `data.js` para o repositório. Nomes de pessoas físicas saem abreviados (`MASK` em `tools/build_data.py`).
 
+### Junsoft
+```
+python tools/build_junsoft.py "caminho/da/planilha-junsoft.xlsx" data-junsoft.js 2026-10-06
+```
+Usa só as abas (a primeira aba do relatório é ignorada). Inadimplência: Boletos (Cobrança Adm), Judicial, Dívida Antiga e Cobrança Extrajudicial (sem dados). Pendência: Clientes em carteira, Depósito, Diversos, Borrachas Vipal e Contas a pagar. O seletor **Sistema** no topo alterna entre Tecinco e Junsoft.
+
 ## Classificação dos clientes
 Na aba *Classificar clientes*, escolha a cor e clique em **Baixar classificações**. Substitua `ratings.js` no repositório para todos verem.
 
