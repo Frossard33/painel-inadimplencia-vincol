@@ -360,7 +360,7 @@
   function abrirFiltro(k, btn, fonte, aplicar) {
     fecharFiltro();
     var d = colDef(k), linhas = filtrar(fonte, k), m = {};
-    linhas.forEach(function (x) { var v = d.v(x); if (!m[v]) m[v] = { n: 0, row: x }; m[v].n++; });
+    linhas.forEach(function (x) { var v = d.v(x); if (!m[v]) m[v] = { n: 0, row: x, ab: 0, rec: 0 }; m[v].n++; m[v].ab += x.aberto; m[v].rec += x.recebido; });
     var vals = Object.keys(m).sort(function (a, b) { return d.o(m[a].row, m[b].row); });
     var sel = {}, atual = estado.colFilt[k];
     vals.forEach(function (v) { sel[v] = !atual || atual.indexOf(v) >= 0; });
@@ -369,22 +369,27 @@
     p.innerHTML = '<div class="pf-ord"><button type="button" data-o="1">Ordenar de A a Z / menor para maior</button><button type="button" data-o="-1">Ordenar de Z a A / maior para menor</button></div>' +
       '<input type="search" class="pf-busca" placeholder="Pesquisar…" aria-label="Pesquisar valores" autocomplete="off">' +
       '<label class="pf-todos"><input type="checkbox" class="pf-all"> (Selecionar tudo)</label><div class="pf-lista"></div>' +
-      '<div class="pf-acoes"><button type="button" class="btn primario" data-a="ok">OK</button><button type="button" class="btn" data-a="cancel">Cancelar</button><button type="button" class="btn" data-a="limpar">Limpar filtro</button></div>';
+      '<p class="pf-soma" aria-live="polite"></p><div class="pf-acoes"><button type="button" class="btn primario" data-a="ok">OK</button><button type="button" class="btn" data-a="cancel">Cancelar</button><button type="button" class="btn" data-a="limpar">Limpar filtro</button></div>';
     document.body.appendChild(p);
     var r = btn.getBoundingClientRect();
     p.style.top = (r.bottom + window.scrollY + 4) + "px";
     p.style.left = Math.max(8, Math.min(r.left + window.scrollX, window.innerWidth - 310)) + "px";
     var lista = p.querySelector(".pf-lista"), busca = p.querySelector(".pf-busca"), all = p.querySelector(".pf-all");
     function visiveis() { var q = busca.value.trim().toLowerCase(); return vals.filter(function (v) { return !q || v.toLowerCase().indexOf(q) >= 0; }); }
+    function somaSel() {
+      var n = 0, ab = 0, rec = 0;
+      vals.forEach(function (v) { if (sel[v]) { n += m[v].n; ab += m[v].ab; rec += m[v].rec; } });
+      p.querySelector(".pf-soma").innerHTML = "Selecionado: <b>" + n.toLocaleString("pt-BR") + "</b> título(s)<br>Em aberto: <b>" + R(ab) + "</b>" + (rec ? " · Recebido: <b>" + R(rec) + "</b>" : "");
+    }
     function desenhar() {
-      var vs = visiveis();
+      var vs = visiveis(); somaSel();
       lista.innerHTML = vs.slice(0, 500).map(function (v) { var i = vals.indexOf(v); return '<label class="pf-item"><input type="checkbox" data-i="' + i + '"' + (sel[v] ? " checked" : "") + "> <span>" + esc(v) + ' <small>(' + m[v].n + ")</small></span></label>"; }).join("") +
         (vs.length > 500 ? '<p class="pf-mais">Mostrando 500 de ' + vs.length + ". Use a pesquisa para refinar.</p>" : "") + (vs.length ? "" : '<p class="pf-mais">Nenhum valor encontrado.</p>');
       all.checked = vs.length > 0 && vs.every(function (v) { return sel[v]; });
     }
     p.addEventListener("change", function (e) {
       if (e.target === all) { visiveis().forEach(function (v) { sel[v] = all.checked; }); desenhar(); }
-      else if (e.target.dataset.i != null) { sel[vals[+e.target.dataset.i]] = e.target.checked; all.checked = visiveis().every(function (v) { return sel[v]; }); }
+      else if (e.target.dataset.i != null) { sel[vals[+e.target.dataset.i]] = e.target.checked; somaSel(); all.checked = visiveis().every(function (v) { return sel[v]; }); }
     });
     busca.addEventListener("input", desenhar);
     p.addEventListener("click", function (e) {
@@ -468,7 +473,11 @@
       h += "</tbody></table></div>";
       if (lista.length > vis.length) h += '<div class="mais"><button class="btn primario" id="maisBtn" type="button">Mostrar mais (' + (lista.length - vis.length) + " restantes)</button></div>";
       var nf = Object.keys(estado.colFilt).length;
-      h = '<p class="explica" style="margin:0 0 8px;color:var(--texto-suave)">' + lista.length.toLocaleString("pt-BR") + " título(s) de " + (pg ? "Contas a pagar" : esc(estado.cat)) + ". Total em aberto: <strong>" + R(soma(lista, "aberto")) + "</strong> " + (nf || estado.ordemCol ? '<button type="button" class="btn" id="limparCols">Limpar filtros das colunas</button>' : "") + "</p>" + h;
+      h = '<div class="soma-filtro" role="status"><span><small>Títulos' + (nf || estado.busca || estado.status !== "todos" ? " filtrados" : "") + " de " + (pg ? "Contas a pagar" : esc(estado.cat)) + "</small><b>" + lista.length.toLocaleString("pt-BR") + "</b></span>" +
+        "<span><small>Total em aberto</small><b>" + R(soma(lista, "aberto")) + "</b></span>" +
+        "<span><small>Total recebido</small><b>" + R(soma(lista, "recebido")) + "</b></span>" +
+        "<span><small>Valor dos títulos</small><b>" + R(soma(lista, "val")) + "</b></span>" +
+        (nf || estado.ordemCol ? '<button type="button" class="btn" id="limparCols">Limpar filtros das colunas</button>' : "") + "</div>" + h;
       el.querySelector("#zTab").innerHTML = h;
       anunciar(lista.length.toLocaleString("pt-BR") + " títulos encontrados");
       var mb = el.querySelector("#maisBtn");

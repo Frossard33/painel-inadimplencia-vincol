@@ -247,3 +247,8 @@ th .thf:focus-visible{outline:3px solid var(--amarelo-marca);outline-offset:1px}
 .clas-op:focus-visible,.clas-op.atual{border-color:var(--azul-escuro);outline:none;box-shadow:0 0 0 2px #fff inset}
 .sem-cel.sem-txt{font-weight:600}
 @media(max-width:640px){.clas-btn{min-height:36px}}
+.soma-filtro{display:flex;flex-wrap:wrap;gap:8px 20px;align-items:center;background:#fff;border:1px solid var(--borda,#E1E5EB);border-left:4px solid var(--vermelho);border-radius:8px;padding:10px 14px;margin:0 0 10px}
+.soma-filtro span{display:flex;flex-direction:column}
+.soma-filtro small{color:var(--texto-suave);font-size:.78rem}
+.soma-filtro b{font-size:1.1rem;font-variant-numeric:tabular-nums}
+.pf-soma{margin:8px 0;padding:8px 10px;background:#F4F6F9;border-radius:6px;font-size:.85rem;font-variant-numeric:tabular-nums}
