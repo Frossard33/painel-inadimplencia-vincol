@@ -775,7 +775,62 @@
     if (alvo && document.getElementById(alvo)) { salvarUrl(); return; }
     lerUrl(); salvarUrl(); render();
   });
-  document.getElementById("btnImprimir").onclick = function () { window.print(); };
+  /* ---------- Página de impressão para reunião (1 folha A4) ---------- */
+  /* Desenha um gráfico fora da tela, sem animação, e devolve como imagem (sai nítido no PDF) */
+  function imagemGrafico(desenhar, w, h) {
+    if (!window.Chart) return "";
+    var caixa = document.createElement("div"), id = "imp" + Math.random().toString(36).slice(2);
+    caixa.style.cssText = "position:absolute;left:-10000px;top:0;width:" + w + "px;height:" + h + "px";
+    caixa.innerHTML = '<canvas id="' + id + '"></canvas>';
+    document.body.appendChild(caixa);
+    var anim = Chart.defaults.animation, n = charts.length;
+    Chart.defaults.animation = false;
+    desenhar(id);
+    Chart.defaults.animation = anim;
+    var c = charts[n], url = c ? c.toBase64Image("image/png", 1) : "";
+    if (c) { c.destroy(); charts.splice(n, 1); }
+    caixa.remove();
+    return url;
+  }
+  function montarImpressao() {
+    var velho = document.getElementById("impressao"); if (velho) velho.remove();
+    var ant = anterior("todas"), hoje = new Date().toLocaleDateString("pt-BR");
+    function num(cl, rot, chave, filtro) {
+      var r = resumo(todos.filter(filtro));
+      return '<div class="imp-n ' + cl + '"><span class="r">' + rot + '</span><span class="n">' + R(r.aberto) + '</span><span class="d">' + r.nAbertos.toLocaleString("pt-BR") + " título(s) · " + r.nClientes + " cliente(s)</span>" +
+        (ant ? variacao(r.aberto, ant.v[CHAVE_HIST[chave]], ant.data) : "") + "</div>";
+    }
+    function tabela(titulo, cats) {
+      return '<table class="imp-tab"><thead><tr><th>' + titulo + '</th><th class="num">Valor</th><th class="num">Títulos</th></tr></thead><tbody>' + cats.map(function (c) {
+        var r = resumo(todos.filter(function (x) { return x.c === c; }));
+        return "<tr><td>" + esc(c) + (c === "Contas a Pagar" ? " <small>(a pagar)</small>" : "") + '</td><td class="num">' + R(r.aberto) + '</td><td class="num">' + r.nAbertos + "</td></tr>";
+      }).join("") + "</tbody></table>";
+    }
+    var rec = todos.filter(GRUPOS["A receber"].f);
+    var gFx = imagemGrafico(function (id) { gFaixas(id, rec); }, 520, 300);
+    var gTp = imagemGrafico(function (id) { gTop(id, rec, 8); }, 520, 300);
+    var d = document.createElement("section");
+    d.id = "impressao";
+    d.innerHTML = '<header class="imp-topo"><img src="logo.png" alt="Vincol"><div><h1>Painel de Inadimplência · ' + esc(sis.nome) + "</h1><p>Posição em " + dataBR(DADOS.gerado) + " · impresso em " + hoje + "</p></div></header>" +
+      '<div class="imp-nums">' + num("hero", "A receber", "A receber", GRUPOS["A receber"].f) + num("", "Judicial + Dívida Antiga", "Judicial + Dívida Antiga", GRUPOS["Judicial + Dívida Antiga"].f) +
+      num("", "Boletos", "Boletos", function (x) { return x.c === BOLETO; }) + num("pagar", "Contas a pagar", "A pagar", GRUPOS["A pagar"].f) + "</div>" +
+      '<p class="imp-nota">A receber = tudo o que falta receber, menos Judicial, Dívida Antiga e contas a pagar. Valores em reais.' + (ant ? " Setas comparam com a posição de " + dataBR(ant.data) + "." : "") + "</p>" +
+      '<div class="imp-duas">' + tabela("Inadimplência", CATEGORIAS) + tabela("Pendência", PEND) + "</div>" +
+      '<div class="imp-duas">' +
+        '<figure><figcaption>A receber: há quanto tempo venceu</figcaption>' + (gFx ? '<img src="' + gFx + '" alt="Gráfico do valor a receber por tempo desde o vencimento">' : "") + "</figure>" +
+        '<figure><figcaption>A receber: 8 maiores devedores</figcaption>' + (gTp ? '<img src="' + gTp + '" alt="Gráfico dos 8 clientes com maior valor a receber">' : "") + "</figure></div>" +
+      '<footer class="imp-rodape">Vincol Pneus · Volta Redonda – RJ · Dados do relatório financeiro (' + esc(sis.nome) + ")</footer>";
+    document.body.appendChild(d);
+    document.body.classList.add("imprimindo");
+  }
+  function desmontarImpressao() {
+    document.body.classList.remove("imprimindo");
+    var d = document.getElementById("impressao"); if (d) d.remove();
+  }
+  /* Vale para o botão e para o Ctrl+P do navegador */
+  window.addEventListener("beforeprint", montarImpressao);
+  window.addEventListener("afterprint", desmontarImpressao);
+  document.getElementById("btnImprimir").onclick = function () { montarImpressao(); window.print(); };
 
   /* ---------- Seletor de sistema (Tecinco / Junsoft) ---------- */
   function marcarSistema() {
@@ -816,4 +871,5 @@
   lerUrl();
   marcarSistema();
   render();
+  if (/[?&]imprimir\b/.test(location.search)) montarImpressao();
 })();

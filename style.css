@@ -212,14 +212,42 @@ select{border:1px solid var(--borda);border-radius:8px;padding:7px 10px;font:inh
 
 .rodape{text-align:center;color:var(--texto-suave);font-size:.8rem;padding:10px 16px 30px}
 
+/* Página de impressão para reunião: só ela aparece no papel (montada pelo app.js) */
+#impressao{display:none}
 @media print{
-  .topo{position:static;background:#fff;color:#000;box-shadow:none}
-  .topo-dir .btn,.navegacao,.abas,.sistemas,.btn-topo,.controles,.mais,.seletor{display:none!important}
-  .marca p,.marca h1{color:#000}
+  @page{size:A4 portrait;margin:11mm}
   body{background:#fff}
-  .card,.kpi{break-inside:avoid}
-  .tabela-wrap{overflow:visible;border:0}
-  th{position:static;background:#ddd;color:#000}
+  body.imprimindo>*:not(#impressao){display:none!important}
+  body.imprimindo #impressao{display:block}
+}
+#impressao{font-size:9.5pt;color:#1B2433;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.imp-topo{display:flex;align-items:center;gap:5mm;background:var(--marca);color:#fff;border-radius:3mm;padding:4mm 5mm;margin-bottom:5mm}
+.imp-topo img{height:11mm}
+.imp-topo h1{font-size:14pt}
+.imp-topo p{margin:1mm 0 0;font-size:9pt;opacity:.9}
+.imp-nums{display:grid;grid-template-columns:1.35fr 1fr 1fr 1fr;gap:3mm}
+.imp-n{border:.3mm solid #D9D9D4;border-radius:3mm;padding:3.5mm;display:flex;flex-direction:column;gap:1mm}
+.imp-n .r{font-size:7.5pt;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#626B78}
+.imp-n .n{font-size:14pt;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+.imp-n .d{font-size:8pt;color:#626B78}
+.imp-n.hero{background:#1F2933;border-color:#1F2933;color:#fff}
+.imp-n.hero .r,.imp-n.hero .d{color:#C9CFD8}
+.imp-n.hero .n{font-size:17pt}
+.imp-n.pagar{border-style:dashed}
+.imp-n .var{font-size:7.5pt;font-weight:700}
+.imp-n .var.sobe{color:#B42318}.imp-n .var.desce{color:#13774A}.imp-n .var.igual{color:#626B78}
+.imp-n.hero .var.sobe{color:#FFB4AB}.imp-n.hero .var.desce{color:#8EE3B5}
+.imp-nota{margin:2.5mm 0 5mm;font-size:8pt;color:#626B78}
+.imp-duas{display:grid;grid-template-columns:1fr 1fr;gap:5mm;margin-bottom:5mm;align-items:start}
+.imp-tab{width:100%;min-width:0;border-collapse:collapse;font-size:8.5pt}
+.imp-tab th{position:static;background:none;color:#1B2433;text-transform:none;letter-spacing:0;font-size:9pt;font-weight:800;padding:1.5mm 1mm;border-bottom:.4mm solid #1B2433;text-align:left}
+.imp-tab th.num{font-weight:600;color:#626B78;font-size:8pt}
+.imp-tab td{padding:1.4mm 1mm;border-top:0;border-bottom:.2mm solid #E7E7E3;font-size:8.5pt}
+.imp-tab td small{color:#626B78}
+#impressao figure{margin:0;border:.3mm solid #D9D9D4;border-radius:3mm;padding:3mm}
+#impressao figcaption{font-weight:700;font-size:9pt;margin-bottom:2mm}
+#impressao figure img{width:100%;display:block}
+.imp-rodape{font-size:7.5pt;color:#626B78;text-align:center;border-top:.2mm solid #E7E7E3;padding-top:2mm}
 }
 
 /* Celular: tabelas viram cartões, alvos de toque de 44px */
