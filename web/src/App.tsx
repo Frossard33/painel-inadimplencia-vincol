@@ -61,6 +61,24 @@ function Painel({ base }: { base: Base }) {
   };
 
   const [menu, setMenu] = useState(false);
+  // Menu lateral recolhido (só ícones) no computador; a escolha fica salva neste navegador
+  const [recolhido, setRecolhido] = useState(() => {
+    try {
+      return localStorage.getItem("vincol_menu_recolhido") === "1";
+    } catch {
+      return false;
+    }
+  });
+  const alternarMenu = useCallback(() => {
+    setRecolhido((r) => {
+      try {
+        localStorage.setItem("vincol_menu_recolhido", r ? "0" : "1");
+      } catch {
+        /* sem armazenamento */
+      }
+      return !r;
+    });
+  }, []);
   const [cliente, setCliente] = useState<string | null>(null);
   const fecharMenu = useCallback(() => setMenu(false), []);
   const fecharFicha = useCallback(() => setCliente(null), []);
@@ -71,7 +89,7 @@ function Painel({ base }: { base: Base }) {
   }, [s]);
 
   return (
-    <div className="app">
+    <div className={"app" + (recolhido ? " menu-recolhido" : "")}>
       <a className="pular" href="#conteudo" onClick={(e) => (e.preventDefault(), document.getElementById("conteudo")?.focus())}>
         Pular para o conteúdo
       </a>
@@ -81,6 +99,8 @@ function Painel({ base }: { base: Base }) {
         disponiveis={disponiveis}
         posicao={dados.gerado}
         aberto={menu}
+        recolhido={recolhido}
+        onRecolher={alternarMenu}
         onFechar={fecharMenu}
         onPagina={(p) => {
           mudar({ pagina: p });

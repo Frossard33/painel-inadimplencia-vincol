@@ -83,6 +83,28 @@ main:focus { outline: none; }
 .m-imprimir:hover { background: rgba(255, 255, 255, 0.1); }
 .veu { display: none; }
 
+/* ===== Menu lateral recolhível (só no computador) ===== */
+.m-recolher { border: 0; background: none; color: var(--claro-suave); padding: 7px; border-radius: 9px; display: grid; place-items: center; }
+.m-recolher:hover { color: #fff; background: rgba(255, 255, 255, 0.06); }
+.m-curto { display: none; }
+@media (min-width: 1024px) {
+  .menu, .area { transition: width 0.22s ease, margin-left 0.22s ease, padding 0.22s ease; }
+  .app.menu-recolhido { --menu: 76px; }
+  .menu.recolhido { padding-left: 12px; padding-right: 12px; }
+  .menu.recolhido .m-logo, .menu.recolhido .m-titulo, .menu.recolhido .m-rot, .menu.recolhido .m-txt { display: none; }
+  .menu.recolhido .m-topo { justify-content: center; margin-bottom: 22px; }
+  .menu.recolhido .m-sis { grid-template-columns: 1fr; }
+  .menu.recolhido .m-sis button { padding: 8px 0; }
+  .menu.recolhido .m-curto { display: inline; font-size: 0.95rem; }
+  .menu.recolhido .m-nav button { justify-content: center; padding: 11px 0; }
+  .menu.recolhido .m-nav button.on::before { left: -12px; }
+  .menu.recolhido .m-rodape { justify-items: center; padding-left: 0; padding-right: 0; }
+  .menu.recolhido .m-imprimir { justify-self: center; padding: 10px; }
+}
+@media (max-width: 1023px) {
+  .m-recolher { display: none; }
+}
+
 /* ===== Barra do celular ===== */
 .barra-celular { display: none; }
 .sis-chip { display: inline-block; vertical-align: middle; margin-left: 10px; padding: 3px 10px; border-radius: 999px; color: #0b1015; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.02em; }
