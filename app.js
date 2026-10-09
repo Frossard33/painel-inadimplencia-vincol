@@ -147,7 +147,7 @@
   }
 
   /* ---------- Estado ---------- */
-  var estado = { aba: "geral", filial: "todas", cat: "Boletos", secGeral: "Boletos", lanc: "receber", status: "todos", busca: "", ordem: "valor", limite: 100,
+  var estado = { aba: "geral", graf: {}, filial: "todas", cat: "Boletos", secGeral: "Boletos", lanc: "receber", status: "todos", busca: "", ordem: "valor", limite: 100,
                  colFilt: {}, ordemCol: null, pintar: pintarIni, cBusca: "", cCor: "todos", cFilial: "todas", cLimite: 100 };
   var charts = [];
   function limparCharts() { charts.forEach(function (c) { c.destroy(); }); charts = []; }
@@ -157,13 +157,26 @@
     charts.push(new Chart(el, cfg));
   }
   if (window.Chart) {
-    Chart.defaults.font.family = '"Segoe UI",system-ui,Arial,sans-serif';
+    Chart.defaults.font.family = '"Inter","Segoe UI",system-ui,Arial,sans-serif';
     Chart.defaults.color = "#5B6676";
     if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) Chart.defaults.animation = false;
   }
   var tipR = { callbacks: { label: function (c) { return " " + (c.dataset.label ? c.dataset.label + ": " : "") + R(c.parsed.x != null && c.chart.options.indexAxis === "y" ? c.parsed.x : (c.parsed.y != null ? c.parsed.y : c.parsed)); } } };
 
   /* ---------- Blocos reutilizáveis ---------- */
+  /* Gráficos ficam recolhidos até a pessoa tocar; são desenhados só ao abrir */
+  function recolhivel(chave, titulo, html) {
+    var aberto = !!estado.graf[chave];
+    return '<details class="graficos" data-graf="' + chave + '"' + (aberto ? " open" : "") + '><summary><span class="g-tit">' + titulo + '</span><span class="g-acao" aria-hidden="true"></span></summary><div class="g-corpo">' + html + "</div></details>";
+  }
+  function quandoAberto(root, chave, desenhar) {
+    var d = root.querySelector('[data-graf="' + chave + '"]'); if (!d) return;
+    if (d.open) { d.dataset.ok = "1"; desenhar(); }
+    d.addEventListener("toggle", function () {
+      estado.graf[chave] = d.open;
+      if (d.open && !d.dataset.ok) { d.dataset.ok = "1"; desenhar(); }
+    });
+  }
   function kpi(rotulo, valor, ajuda, classe) {
     return '<div class="kpi ' + (classe || "") + '"><div class="rotulo">' + rotulo + '</div><div class="valor">' + valor + '</div><div class="ajuda">' + ajuda + "</div></div>";
   }
@@ -181,23 +194,23 @@
   function kpisHtml(r, boleto) {
     var velho = r.aberto ? r.velho / r.aberto : 0;
     if (boleto) return '<div class="kpis">' +
-      kpi("Quantos clientes de boleto devem?", r.nClientes.toLocaleString("pt-BR"), "Clientes diferentes com boleto em aberto") +
+      kpi("Quantos clientes de boleto devem?", r.nClientes.toLocaleString("pt-BR"), "Clientes diferentes com boleto não pago") +
       kpi("Quanto já entrou?", R(r.rec), r.nPagos + " boleto(s) pago(s) (com data de pagamento)", "verde") + "</div>";
     return '<div class="kpis">' +
-      kpi("Quantos clientes devem?", r.nClientes.toLocaleString("pt-BR"), "Clientes diferentes com valor em aberto") +
-      kpi("Quanto está atrasado há mais de 90 dias?", pct(velho), "Parte do valor em aberto vencida há mais de 3 meses", "amarelo") + "</div>";
+      kpi("Quantos clientes devem?", r.nClientes.toLocaleString("pt-BR"), "Clientes diferentes com valor a receber") +
+      kpi("Quanto venceu há mais de 3 meses?", pct(velho), "Parte do valor a receber que venceu há mais de 90 dias", "amarelo") + "</div>";
   }  function insights(arr, titulo) {
     var ab = soma(arr, "aberto"); if (!ab) return "";
     var top = topDevedores(arr, 10), topSoma = top.reduce(function (a, x) { return a + x.aberto; }, 0);
     var velho = soma(arr.filter(function (x) { return x.dias > 90 && !x.pago; }), "aberto");
-    return '<div class="insight"><strong>Resumo em uma frase:</strong> ' + esc(titulo) + " têm <strong>" + R(ab) + "</strong> em aberto. " +
-      "Os 10 maiores devedores respondem por <strong>" + pct(topSoma / ab) + "</strong> e " + pct(velho / ab) + " do valor está atrasado há mais de 90 dias.</div>";
+    return '<div class="insight"><strong>Resumo em uma frase:</strong> ' + esc(titulo) + " têm <strong>" + R(ab) + "</strong> a receber. " +
+      "Os 10 maiores devedores respondem por <strong>" + pct(topSoma / ab) + "</strong> e " + pct(velho / ab) + " do valor venceu há mais de 3 meses.</div>";
   }
 
   /* ---------- Gráficos ---------- */
   function gFaixas(id, arr) {
     var v = FAIXAS.map(function (_, i) { return soma(arr.filter(function (x) { return !x.pago && faixa(x.dias) === i; }), "aberto"); });
-    grafico(id, { type: "bar", data: { labels: FAIXAS, datasets: [{ label: "Em aberto", data: v, backgroundColor: FAIXA_CORES, borderRadius: 6 }] },
+    grafico(id, { type: "bar", data: { labels: FAIXAS, datasets: [{ label: "Falta receber", data: v, backgroundColor: FAIXA_CORES, borderRadius: 6 }] },
       options: { maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (c) { return " " + R(c.parsed.y); } } } },
         scales: { y: { ticks: { callback: function (v) { return Rk(v); } } } } } });
   }
@@ -207,7 +220,7 @@
       var g = agrupar(arr.filter(function (x) { return x.pago; }), function (x) { return x.cod; });
       t = Object.keys(g).map(function (k) { return { cli: g[k][0].cli, aberto: soma(g[k], "recebido") }; }).sort(function (a, b) { return b.aberto - a.aberto; }).slice(0, n);
     } else t = topDevedores(arr, n);
-    var rot = pagos ? "Recebido" : "Em aberto";
+    var rot = pagos ? "Recebido" : "Falta receber";
     grafico(id, { type: "bar", data: { labels: t.map(function (x) { return x.cli.length > 28 ? x.cli.slice(0, 27) + "…" : x.cli; }),
         datasets: [{ label: rot, data: t.map(function (x) { return x.aberto; }), backgroundColor: pagos ? "#1E9E5A" : "#D6322E", borderRadius: 4 }] },
       options: { indexAxis: "y", maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (c) { return " " + rot + ": " + R(c.parsed.x); } } } },
@@ -223,9 +236,9 @@
     var g = agrupar(arr, function (x) { return x.c; });
     var cats = CATEGORIAS.filter(function (c) { return g[c]; });
     var vals = cats.map(function (c) { return soma(g[c], "aberto"); });
-    grafico(id, { type: "bar", data: { labels: cats, datasets: [{ label: "Em aberto", data: vals,
+    grafico(id, { type: "bar", data: { labels: cats, datasets: [{ label: "Falta receber", data: vals,
         backgroundColor: cats.map(function (c) { return c === BOLETO ? "#D6322E" : "#8FA3B8"; }), borderRadius: 4 }] },
-      options: { maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (c) { return " Em aberto: " + R(c.parsed.y); } } } },
+      options: { maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (c) { return " Falta receber: " + R(c.parsed.y); } } } },
         scales: { y: { ticks: { callback: function (v) { return Rk(v); } } } } } });
   }
     function gSemaforo(id, arr) {
@@ -240,12 +253,12 @@
     var rr = resumo(arr);
     if (PEND.indexOf(cat) >= 0 && cat !== "Contas a Pagar" && arr.some(function (x) { return x.d === "PAGAR"; }) && arr.some(function (x) { return x.d !== "PAGAR"; }))
       extra = "<small>A pagar " + Rk(soma(arr.filter(function (x) { return x.d === "PAGAR"; }), "aberto")) + " · a receber " + Rk(soma(arr.filter(function (x) { return x.d !== "PAGAR"; }), "aberto")) + "</small>";
-    return '<button type="button" class="quad ' + (ativo ? "on " : "") + (cat === BOLETO ? "boleto " : "") + '" data-sec="' + esc(cat) + '" aria-pressed="' + !!ativo + '"><b>' + esc(cat) + '</b><span class="v">' + R(rr.aberto) + "</span><small>" + rr.nAbertos.toLocaleString("pt-BR") + " título(s) em aberto · " + rr.nClientes + " cliente(s)</small>" + (extra || "") + "</button>";
+    return '<button type="button" class="quad ' + (ativo ? "on " : "") + (cat === BOLETO ? "boleto " : "") + '" data-sec="' + esc(cat) + '" aria-pressed="' + !!ativo + '"><b>' + esc(cat) + '</b><span class="v">' + R(rr.aberto) + "</span><small>" + rr.nAbertos.toLocaleString("pt-BR") + " título(s) não pago(s) · " + rr.nClientes + " cliente(s)</small>" + (extra || "") + "</button>";
   }
   function graficosSecao(prefixo, arr, comSemaforo) {
-    var semaforo = comSemaforo ? cardGraf("Classificação dos clientes", "Valor em aberto por cor: verde = em dia (sempre paga) · amarelo = em atraso (paga, mas com atraso) · vermelho = inadimplente (nunca paga). Classifique na aba “Classificar clientes”.", prefixo + "Sem", "c6") : "";
-    return cardGraf("Há quanto tempo está atrasado", "Valor em aberto agrupado por tempo de atraso. Quanto mais à direita, mais difícil de recuperar.", prefixo + "Faixa", "c6") +
-      cardGraf("Os 10 maiores devedores", "Clientes com maior valor em aberto.", prefixo + "Top", "c6", true) + semaforo;
+    var semaforo = comSemaforo ? cardGraf("Classificação dos clientes", "Valor a receber por cor: verde = em dia (sempre paga) · amarelo = em atraso (paga, mas com atraso) · vermelho = inadimplente (nunca paga). Classifique na aba “Classificar clientes”.", prefixo + "Sem", "c6") : "";
+    return cardGraf("Há quanto tempo venceu", "Valor a receber agrupado pelo tempo desde o vencimento. Quanto mais à direita, mais difícil de recuperar.", prefixo + "Faixa", "c6") +
+      cardGraf("Os 10 maiores devedores", "Clientes com maior valor a receber.", prefixo + "Top", "c6", true) + semaforo;
   }
   function desenharSecao(prefixo, arr, comSemaforo) {
     gFaixas(prefixo + "Faixa", arr);
@@ -254,7 +267,7 @@
   }
   function gPorFilial(id, arr, comRecebido) {
     var fs = FILIAIS.filter(function (f) { return titulos.some(function (x) { return x.f === f.id; }); });
-    var ds = [{ label: "Em aberto", data: fs.map(function (f) { return soma(arr.filter(function (x) { return x.f === f.id; }), "aberto"); }), backgroundColor: "#D6322E", borderRadius: 6 }];
+    var ds = [{ label: "Falta receber", data: fs.map(function (f) { return soma(arr.filter(function (x) { return x.f === f.id; }), "aberto"); }), backgroundColor: "#D6322E", borderRadius: 6 }];
     if (comRecebido) ds.push({ label: "Recebido", data: fs.map(function (f) { return soma(arr.filter(function (x) { return x.f === f.id; }), "recebido"); }), backgroundColor: "#1E9E5A", borderRadius: 6 });
     grafico(id, { type: "bar", data: { labels: fs.map(function (f) { return f.nome; }), datasets: ds },
       options: { maintainAspectRatio: false, plugins: { legend: { display: comRecebido }, tooltip: { callbacks: { label: function (c) { return " " + c.dataset.label + ": " + R(c.parsed.y); } } } }, scales: { y: { ticks: { callback: function (v) { return Rk(v); } } } } } });
@@ -272,10 +285,10 @@
   function resumo4(arr, compacto) {
     function card(cl, chave, rot, filtro, desc) {
       var r = resumo(arr.filter(filtro)), on = estado.aba === "titulos" && estado.cat === chave;
-      return '<button type="button" class="res ' + cl + (on ? " on" : "") + '" data-ir="' + esc(chave) + '" aria-pressed="' + on + '"><span class="r">' + rot + '</span><span class="n">' + R(r.aberto) + '</span><span class="d">' +
+      return '<button type="button" class="res ' + cl + (on ? " on" : "") + '" data-ir="' + esc(chave) + '" aria-pressed="' + on + '"><span class="r">' + rot + '</span><span class="n" data-num="' + r.aberto + '">' + R(r.aberto) + '</span><span class="d">' +
         (desc || r.nAbertos.toLocaleString("pt-BR") + " título(s) · " + r.nClientes + " cliente(s)") + '</span><span class="ir" aria-hidden="true">' + (on ? "Mostrando abaixo" : "Ver lista →") + "</span></button>";
     }
-    return '<div class="resumo' + (compacto ? " compacto" : "") + '" role="group" aria-label="Resumo dos valores em aberto">' +
+    return '<div class="resumo' + (compacto ? " compacto" : "") + '" role="group" aria-label="Resumo dos valores">' +
       card("hero", "A receber", "A receber", GRUPOS["A receber"].f, null) +
       card("", "Judicial + Dívida Antiga", "Judicial + Dívida Antiga", GRUPOS["Judicial + Dívida Antiga"].f) +
       card("", BOLETO, "Boletos", function (x) { return x.c === BOLETO; }) +
@@ -288,8 +301,8 @@
     var html = '<div class="titulo-secao"><h2>Visão geral' + tagSis() + '</h2><p>' + (sis.semFilial ? "Todos os títulos juntos." : "Todas as filiais juntas.") + " Toque em um número para abrir a lista.</p></div>";
     var como = '<details class="como"><summary>Como ler este painel (30 segundos)</summary><ul>' +
       '<li><b>Boleto</b> é somente o que está na <b>Cobrança Administrativa</b>. ' + sis.inadTxt + ' <b>não são boletos</b> e ficam separados, cada um no seu quadro.</li>' +
-      '<li><b>Em aberto</b> é o dinheiro que os clientes deviam pagar e ainda não pagaram. <b>Recebido</b> é o que já entrou (data de pagamento preenchida na planilha).</li>' +
-      '<li><b>Atraso</b> é quantos dias passaram desde o vencimento. Quanto maior o atraso, mais difícil de receber.</li>' +
+      '<li><b>Falta receber</b> é o dinheiro que os clientes deviam pagar e ainda não pagaram. <b>Recebido</b> é o que já entrou (data de pagamento preenchida na planilha).</li>' +
+      '<li><b>Dias vencido</b> é quantos dias passaram desde o vencimento. Quanto mais dias, mais difícil de receber.</li>' +
       '<li><b>Classificação</b> (só para clientes de boleto): verde = em dia (cliente que sempre paga) · amarelo = em atraso (cliente que paga, mas com atraso) · vermelho = inadimplente (cliente que nunca paga).</li>' +
       '<li>Na aba <b>Títulos</b> dá para ' + (sis.semFilial ? "" : "escolher a filial, ") + 'trocar o tipo de título, buscar um cliente e baixar a lista para Excel.</li></ul></details>';
     html += resumo4(todos);
@@ -297,18 +310,20 @@
     html += gruposQuads(function (c) { return todos.filter(function (x) { return x.c === c; }); }, estado.secGeral);
     html += '<div class="titulo-secao"><h3>' + esc(estado.secGeral) + '</h3><p>' + esc(DESCR[estado.secGeral] || "") + "</p></div>" +
       kpisHtml(resumo(sel), eb) + insights(sel, eb ? "Os boletos" : estado.secGeral) +
-      '<div class="grade">' + (sis.semFilial ? "" : cardGraf(esc(estado.secGeral) + (eb ? ": em aberto × recebido por filial" : ": em aberto por filial"), eb ? "Vermelho é o que falta receber; verde é o que já foi pago." : "Quanto cada filial tem para receber neste tipo de título.", "sFilial", "c12")) + graficosSecao("s", sel, eb) + "</div>" +
-      '<div class="grade">' + cardGraf("Quanto cada tipo representa", "Valor em aberto de cada tipo de título. Os boletos aparecem em vermelho; os demais tipos (que não são boletos) em cinza-azulado.", "gTipos", "c12") + "</div>" +
+      recolhivel("geral", "Gráficos de " + esc(estado.secGeral), '<div class="grade">' + (sis.semFilial ? "" : cardGraf(esc(estado.secGeral) + (eb ? ": falta receber × recebido por filial" : ": falta receber por filial"), eb ? "Vermelho é o que falta receber; verde é o que já foi pago." : "Quanto cada filial tem para receber neste tipo de título.", "sFilial", "c12")) + graficosSecao("s", sel, eb) + "</div>" +
+      '<div class="grade">' + cardGraf("Quanto cada tipo representa", "Valor a receber de cada tipo de título. Os boletos aparecem em vermelho; os demais tipos (que não são boletos) em cinza-azulado.", "gTipos", "c12") + "</div>") +
       (sis.semFilial ? "" : '<div class="card"><h3>Filiais</h3><p class="explica">Toque para abrir os títulos de cada uma.</p><div class="filiais">' +
       FILIAIS.map(function (f) {
         var a = titulos.filter(function (x) { return x.f === f.id; }); if (!a.length) return "";
         var b = a.filter(function (x) { return x.c === BOLETO; }), rb = resumo(b), ro = resumo(a.filter(function (x) { return x.c !== BOLETO; }));
-        return '<button type="button" class="filial-card" data-filial="' + f.id + '"><b>' + f.nome + (f.id !== "OUT" ? " (" + f.id + ")" : "") + '</b><small>Boletos em aberto</small><span class="v">' + R(rb.aberto) + "</span><small>" + rb.nAbertos + " boleto(s) · outros títulos: " + R(ro.aberto) + "</small></button>";
+        return '<button type="button" class="filial-card" data-filial="' + f.id + '"><b>' + f.nome + (f.id !== "OUT" ? " (" + f.id + ")" : "") + '</b><small>Boletos a receber</small><span class="v">' + R(rb.aberto) + "</span><small>" + rb.nAbertos + " boleto(s) · outros títulos: " + R(ro.aberto) + "</small></button>";
       }).join("") + "</div></div>");
     el.innerHTML = html;
-    if (!sis.semFilial) gPorFilial("sFilial", sel, eb);
-    desenharSecao("s", sel, eb);
-    gCategoriaBarras("gTipos", titulos);
+    quandoAberto(el, "geral", function () {
+      if (!sis.semFilial) gPorFilial("sFilial", sel, eb);
+      desenharSecao("s", sel, eb);
+      gCategoriaBarras("gTipos", titulos);
+    });
   }
 
   /* ---------- Títulos ---------- */
@@ -322,9 +337,9 @@
     { k: "cli", t: "Cliente / Fornecedor", v: function (x) { return x.cli; }, o: function (a, b) { return a.cli.localeCompare(b.cli, "pt-BR"); } },
     { k: "tit", t: "Título", v: function (x) { return String(x.tit); }, o: function (a, b) { return String(a.tit).localeCompare(String(b.tit), "pt-BR", { numeric: true }); } },
     { k: "venc", t: "Vencimento", v: function (x) { return dataBR(x.v); }, o: function (a, b) { return a.v < b.v ? -1 : a.v > b.v ? 1 : 0; } },
-    { k: "atraso", t: "Atraso", num: 1, v: function (x) { return x.pago ? "Pago" : FAIXAS[faixa(x.dias)]; }, o: function (a, b) { return a.dias - b.dias; } },
+    { k: "atraso", t: "Dias vencido", num: 1, v: function (x) { return x.pago ? "Pago" : FAIXAS[faixa(x.dias)]; }, o: function (a, b) { return a.dias - b.dias; } },
     { k: "val", t: "Valor do título", num: 1, v: function (x) { return R(x.val); }, o: function (a, b) { return a.val - b.val; } },
-    { k: "sit", t: "Situação / valor", num: 1, v: function (x) { return x.pago ? "Pago" : "Em aberto"; }, o: function (a, b) { return (a.aberto + a.recebido) - (b.aberto + b.recebido); } },
+    { k: "sit", t: "Situação", num: 1, v: function (x) { return x.pago ? "Pago" : "Não pago"; }, o: function (a, b) { return (a.aberto + a.recebido) - (b.aberto + b.recebido); } },
     { k: "sem", t: "Classificação", v: function (x) { return NOMES_COR[cor(x.cod)]; }, o: function (a, b) { return NOMES_COR[cor(a.cod)].localeCompare(NOMES_COR[cor(b.cod)], "pt-BR"); } }
   ];
   function colDef(k) { return COLS.filter(function (c) { return c.k === k; })[0]; }
@@ -407,7 +422,7 @@
       var n = 0, ab = 0, rec = 0;
       var inad = ehInad(estado.cat) && estado.lanc !== "pagar" && estado.status !== "pago";
       vals.forEach(function (v) { if (sel[v]) { n += inad ? m[v].np : m[v].n; ab += m[v].ab; rec += m[v].rec; } });
-      p.querySelector(".pf-soma").innerHTML = "Selecionado: <b>" + n.toLocaleString("pt-BR") + "</b> título(s)<br>Em aberto: <b>" + R(ab) + "</b>" + (rec && !inad ? " · Recebido: <b>" + R(rec) + "</b>" : "");
+      p.querySelector(".pf-soma").innerHTML = "Selecionado: <b>" + n.toLocaleString("pt-BR") + "</b> título(s)<br>Falta receber: <b>" + R(ab) + "</b>" + (rec && !inad ? " · Recebido: <b>" + R(rec) + "</b>" : "");
     }
     function desenhar() {
       var vs = visiveis(); somaSel();
@@ -453,11 +468,11 @@
       '<div id="zCat"></div>' +
       '<div id="zKpi"></div>' +
       '<div class="controles"><div class="chips" id="zStatus"></div></div>' +
-      '<div class="grade" id="zGraf"></div>' +
+      '<div id="zGraf"></div>' +
       '<div class="legenda" id="zLeg"></div>' +
       '<div id="zLista" class="controles" role="group" aria-label="Tipo de lançamento"><b>Mostrar na tabela:</b><div class="chips" id="zLanc"></div></div>' +
       '<div class="controles"><input type="search" id="busca" aria-label="Buscar cliente, código ou título" placeholder="Buscar cliente, código ou título…" autocomplete="off" spellcheck="false" value="' + esc(estado.busca) + '">' +
-      '<label>Ordenar: <select id="ordem"><option value="valor">Maior valor</option><option value="atraso">Mais atrasado</option><option value="cliente">Cliente A–Z</option></select></label>' +
+      '<label>Ordenar: <select id="ordem"><option value="valor">Maior valor</option><option value="atraso">Vencido há mais tempo</option><option value="cliente">Cliente A–Z</option></select></label>' +
       '<button class="btn" id="btnCsv" type="button">Exportar para Excel</button></div>' +
       '<div id="zTab"></div>';
     el.querySelector("#ordem").value = estado.ordem;
@@ -467,7 +482,7 @@
       el.querySelector("#zRes").innerHTML = resumo4(base, true);
       el.querySelector("#zCat").innerHTML = gruposQuads(function (c) { return base.filter(function (x) { return x.c === c; }); }, estado.cat);
       el.querySelector("#zLanc").innerHTML = [["receber", "Contas a receber"], ["pagar", "Contas a pagar (" + pagarF.length + ")"]].map(function (s) { return '<button class="chip ' + (estado.lanc === s[0] ? "on" : "") + '" data-lanc="' + s[0] + '" aria-pressed="' + (estado.lanc === s[0]) + '">' + s[1] + "</button>"; }).join("");
-      var sts = [["todos", "Todos"], ["aberto", "Em aberto"], ["atrasado", "Atrasado"], ["pago", "Pagos ✔"]];
+      var sts = [["todos", "Todos"], ["aberto", "Não pagos"], ["atrasado", "Vencidos"], ["pago", "Pagos"]];
       el.querySelector("#zStatus").innerHTML = sts.map(function (s) { return '<button class="chip ' + (estado.status === s[0] ? "on" : "") + '" data-st="' + s[0] + '">' + s[1] + "</button>"; }).join("");
       el.querySelector("#zLeg").innerHTML = estado.cat === BOLETO ? '<span class="sem-cel sem-verde pill">Em dia</span><span class="sem-cel sem-amarelo pill">Em atraso</span><span class="sem-cel sem-vermelho pill">Inadimplente</span><span class="sem-cel sem-nenhum pill">Sem classificação (altere em “Classificar clientes”)</span><label class="chk"><input type="checkbox" id="pintar"' + (estado.pintar ? " checked" : "") + '> Preencher o fundo com as cores</label>' : "";
     }
@@ -482,11 +497,11 @@
       var sa = arr.filter(passaStatus);
       if (!sa.length) { el.querySelector("#zGraf").innerHTML = '<div class="aviso">Nenhum título com este filtro' + esc(onde) + ".</div>"; return; }
       if (estado.status === "pago") {
-        el.querySelector("#zGraf").innerHTML = cardGraf("Quem já pagou", "Clientes com maior valor já recebido (títulos pagos).", "fTopPagos", "c12", true);
-        gTop("fTopPagos", sa, 10, true);
+        el.querySelector("#zGraf").innerHTML = recolhivel("titulos", "Gráfico: quem já pagou", '<div class="grade">' + cardGraf("Quem já pagou", "Clientes com maior valor já recebido (títulos pagos).", "fTopPagos", "c12", true) + "</div>");
+        quandoAberto(el, "titulos", function () { gTop("fTopPagos", sa, 10, true); });
       } else {
-        el.querySelector("#zGraf").innerHTML = graficosSecao("f", sa, eb);
-        desenharSecao("f", sa, eb);
+        el.querySelector("#zGraf").innerHTML = recolhivel("titulos", "Gráficos de " + esc(estado.cat), '<div class="grade">' + graficosSecao("f", sa, eb) + "</div>");
+        quandoAberto(el, "titulos", function () { desenharSecao("f", sa, eb); });
       }
     }
     function atualizaTabela() {
@@ -505,8 +520,8 @@
         var c = cor(x.cod);
         h += '<tr class="' + (eb && estado.pintar ? "linha-" + c : (x.pago ? "pago" : "")) + '"><td class="cli"><span class="nome" title="' + esc(x.cli) + '">' + esc(x.cli) + "</span><small>Cód. " + esc(x.cod) + "</small></td>" +
           '<td data-label="Título">' + esc(x.tit) + (x.par ? "<small> parc. " + esc(x.par) + "</small>" : "") + (x.d && PEND.indexOf(x.c) >= 0 ? "<small>" + (x.d === "PAGAR" ? "A pagar" : "A receber") + "</small>" : "") + "</td>" +
-          '<td data-label="Vencimento">' + dataBR(x.v) + '</td><td class="num" data-label="Atraso">' + (x.pago ? "-" : diasTxt(x.dias)) + '</td><td class="num" data-label="Valor do título">' + R(x.val) + "</td>" +
-          '<td class="num" data-label="Situação">' + (x.pago ? '<span class="selo pago">Pago' + (x.pg ? " em " + dataBR(x.pg) : "") + "</span><br>" + R(x.recebido) : '<span class="selo aberto">Em aberto</span><br>' + R(x.aberto)) + "</td>" +
+          '<td data-label="Vencimento">' + dataBR(x.v) + '</td><td class="num" data-label="Dias vencido">' + (x.pago ? "-" : diasTxt(x.dias)) + '</td><td class="num" data-label="Valor do título">' + R(x.val) + "</td>" +
+          '<td class="num" data-label="Situação">' + (x.pago ? '<span class="selo pago">Pago' + (x.pg ? " em " + dataBR(x.pg) : "") + "</span><br>" + R(x.recebido) : '<span class="selo aberto">' + (x.d === "PAGAR" ? "Falta pagar" : "Falta receber") + "</span><br>" + R(x.aberto)) + "</td>" +
           (eb ? '<td data-label="Classificação" class="sem-cel sem-' + c + '"><span class="sem-txt">' + NOMES_COR[c] + '</span> <button type="button" class="clas-btn" data-clas="' + esc(x.cod) + '" aria-haspopup="menu" aria-label="Classificar ' + esc(x.cli) + '">' + (c === "nenhum" ? "Classificar" : "Alterar") + ' ▾</button></td>' : "") + "</tr>";
       });
       h += "</tbody></table></div>";
@@ -514,8 +529,8 @@
       var nf = Object.keys(estado.colFilt).length;
       /* Na inadimplência, título pago não entra nos totais (só quando o filtro é "Pagos") */
       var inad = !pg && ehInad(estado.cat) && estado.status !== "pago", tot = inad ? lista.filter(function (x) { return !x.pago; }) : lista;
-      h = '<div class="soma-filtro" role="status"><span><small>Títulos' + (inad ? " em aberto" : "") + (nf || estado.busca || estado.status !== "todos" ? " filtrados" : "") + " de " + (pg ? "Contas a pagar" : esc(estado.cat)) + "</small><b>" + tot.length.toLocaleString("pt-BR") + "</b></span>" +
-        "<span><small>Total em aberto</small><b>" + R(soma(tot, "aberto")) + "</b></span>" +
+      h = '<div class="soma-filtro" role="status"><span><small>Títulos' + (inad ? " não pagos" : "") + (nf || estado.busca || estado.status !== "todos" ? " filtrados" : "") + " de " + (pg ? "Contas a pagar" : esc(estado.cat)) + "</small><b>" + tot.length.toLocaleString("pt-BR") + "</b></span>" +
+        "<span><small>" + (pg || estado.cat === "A pagar" || estado.cat === "Contas a Pagar" ? "Falta pagar" : "Falta receber") + "</small><b>" + R(soma(tot, "aberto")) + "</b></span>" +
         (inad ? "" : "<span><small>Total recebido</small><b>" + R(soma(tot, "recebido")) + "</b></span>") +
         "<span><small>Valor dos títulos</small><b>" + R(soma(tot, "val")) + "</b></span>" +
         (inad && lista.length > tot.length ? "<span><small>Pagos (fora dos totais)</small><b>" + (lista.length - tot.length) + "</b></span>" : "") +
@@ -602,11 +617,11 @@
         return '<button class="chip ' + (estado.cCor === s[0] ? "on" : "") + '" data-cc="' + s[0] + '">' + s[1] + ' <span class="n">' + n + "</span></button>";
       }).join("");
       var vis = l.slice(0, estado.cLimite);
-      var h = '<p class="explica" style="margin:0 0 8px;color:var(--texto-suave)">' + l.length.toLocaleString("pt-BR") + " cliente(s)</p><div class=\"tabela-wrap\"><table><thead><tr><th>Cliente</th>" + (sis.semFilial ? "" : "<th>Filial(is)</th>") + "<th class=\"num\">Títulos em aberto</th><th class=\"num\">Total em aberto</th><th class=\"num\">Maior atraso</th><th>Classificação</th></tr></thead><tbody>";
+      var h = '<p class="explica" style="margin:0 0 8px;color:var(--texto-suave)">' + l.length.toLocaleString("pt-BR") + " cliente(s)</p><div class=\"tabela-wrap\"><table><thead><tr><th>Cliente</th>" + (sis.semFilial ? "" : "<th>Filial(is)</th>") + "<th class=\"num\">Títulos não pagos</th><th class=\"num\">Falta receber</th><th class=\"num\">Mais dias vencido</th><th>Classificação</th></tr></thead><tbody>";
       if (!l.length) h += '<tr><td colspan="' + (sis.semFilial ? 5 : 6) + '" class="vazio">Nenhum cliente encontrado.</td></tr>';
       vis.forEach(function (c) {
         var cc = cor(c.cod);
-        h += '<tr><td class="cli"><span class="nome" title="' + esc(c.cli) + '">' + esc(c.cli) + "</span><small>Cód. " + esc(c.cod) + (c.pagou ? ", já pagou título" : "") + '</small></td>' + (sis.semFilial ? "" : '<td data-label="Filial(is)">' + c.filiais.map(function (f) { return f === "OUT" ? "Outras" : f; }).join(", ") + "</td>") + '<td class="num" data-label="Títulos em aberto">' + c.n + '</td><td class="num" data-label="Total em aberto">' + R(c.aberto) + '</td><td class="num" data-label="Maior atraso">' + (c.n ? diasTxt(c.dias) : "-") + "</td>" +
+        h += '<tr><td class="cli"><span class="nome" title="' + esc(c.cli) + '">' + esc(c.cli) + "</span><small>Cód. " + esc(c.cod) + (c.pagou ? ", já pagou título" : "") + '</small></td>' + (sis.semFilial ? "" : '<td data-label="Filial(is)">' + c.filiais.map(function (f) { return f === "OUT" ? "Outras" : f; }).join(", ") + "</td>") + '<td class="num" data-label="Títulos não pagos">' + c.n + '</td><td class="num" data-label="Falta receber">' + R(c.aberto) + '</td><td class="num" data-label="Mais dias vencido">' + (c.n ? diasTxt(c.dias) : "-") + "</td>" +
           '<td data-label="Classificação"><span class="seletor" role="group" aria-label="Classificação de ' + esc(c.cli) + '" data-cod="' + esc(c.cod) + '">' +
           ["verde", "amarelo", "vermelho", "nenhum"].map(function (k) { return '<button type="button" class="s-' + k + (cc === k ? " on" : "") + '" data-c="' + k + '" aria-pressed="' + (cc === k) + '" aria-label="' + NOMES_COR[k] + '" title="' + NOMES_COR[k] + '"><i></i></button>'; }).join("") + "</span></td></tr>";
       });
@@ -645,6 +660,19 @@
   }
 
   /* ---------- Abas e roteamento ---------- */
+  function animarNumeros(root) {
+    if (!suave() || !window.requestAnimationFrame) return;
+    [].forEach.call(root.querySelectorAll("[data-num]"), function (n) {
+      var fim = +n.dataset.num, t0 = null;
+      function passo(t) {
+        if (t0 === null) t0 = t;
+        var p = Math.min(1, (t - t0) / 700);
+        n.textContent = R(fim * (1 - Math.pow(1 - p, 3)));
+        if (p < 1) requestAnimationFrame(passo);
+      }
+      requestAnimationFrame(passo);
+    });
+  }
   function suave() { return !(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches); }
   function anunciar(txt) { var a = document.getElementById("anuncio"); if (a) a.textContent = txt; }
   function abasValidas() { return ["geral", "titulos", "clientes"]; }
@@ -691,6 +719,8 @@
     if (estado.aba === "geral") renderGeral(el);
     else if (estado.aba === "clientes") renderClientes(el);
     else renderTitulos(el);
+    if (suave()) { el.classList.remove("entra"); void el.offsetWidth; el.classList.add("entra"); }
+    animarNumeros(el);
   }
   function ir(aba, foco, manter) {
     if (aba !== estado.aba && !manter) { estado.filial = "todas"; estado.cat = BOLETO; estado.lanc = "receber"; estado.status = "todos"; estado.busca = ""; estado.limite = 100; estado.colFilt = {}; estado.ordemCol = null; }

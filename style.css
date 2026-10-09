@@ -20,7 +20,7 @@
 }
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
-body{margin:0;-webkit-text-size-adjust:100%;font-family:"Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;background:var(--fundo);color:var(--texto);font-size:15px;line-height:1.45}
+body{margin:0;-webkit-text-size-adjust:100%;font-family:"Inter","Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;font-optical-sizing:auto;background:var(--fundo);color:var(--texto);font-size:15px;line-height:1.45}
 h1,h2,h3{margin:0;text-wrap:balance}
 .pular{position:absolute;left:8px;top:-60px;background:#fff;color:var(--azul-escuro);padding:10px 14px;border-radius:8px;font-weight:700;z-index:50}
 .pular:focus{top:8px}
@@ -133,6 +133,23 @@ button,.chip,.aba{touch-action:manipulation}
 .chips.rolar{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding:2px}
 .chips.rolar::-webkit-scrollbar{display:none}
 .chips.rolar .chip{flex:none}
+
+/* Gráficos recolhidos */
+.graficos{background:#fff;border:1px solid var(--borda);border-radius:var(--raio);margin-bottom:16px}
+.graficos>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 20px;font-weight:700;color:var(--azul-escuro);min-height:48px}
+.graficos>summary::-webkit-details-marker{display:none}
+.graficos .g-acao::after{content:"Ver gráficos";font-size:.8rem;font-weight:700;color:var(--sis);white-space:nowrap}
+.graficos[open] .g-acao::after{content:"Esconder"}
+.graficos .g-acao::before{content:"";display:inline-block;width:8px;height:8px;margin-right:8px;border-right:2px solid var(--sis);border-bottom:2px solid var(--sis);transform:translateY(-3px) rotate(45deg);transition:transform .2s}
+.graficos[open] .g-acao::before{transform:translateY(1px) rotate(-135deg)}
+.graficos>summary:hover .g-tit{color:var(--texto)}
+.graficos .g-corpo{padding:0 12px 4px}
+.graficos .grade{margin-bottom:8px}
+.graficos .card{border-color:#EFEFEB}
+
+/* Conteúdo entra suave ao trocar de aba */
+@keyframes entra{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.entra{animation:entra .25s ease-out}
 
 /* Cartões de filial */
 .filiais{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
