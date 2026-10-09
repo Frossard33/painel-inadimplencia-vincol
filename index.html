@@ -8,7 +8,7 @@
 <meta name="color-scheme" content="light">
 <meta name="theme-color" content="#E02727">
 <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
-<link rel="stylesheet" href="style.css?v=20261009g">
+<link rel="stylesheet" href="style.css?v=20261009o">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 </head>
 <body>
@@ -27,20 +27,25 @@
       <button class="btn" id="btnImprimir" type="button">Imprimir / PDF</button>
     </div>
   </div>
-  <div class="sistemas" id="sistemas" role="group" aria-label="Escolher o sistema de origem dos dados"></div>
-  <nav class="abas" id="abas" role="tablist" aria-label="Seções do painel"></nav>
 </header>
+<div class="navegacao">
+  <div class="nav-in">
+    <div class="sistemas" id="sistemas" role="group" aria-label="Escolher o sistema de origem dos dados"></div>
+    <nav class="abas" id="abas" role="tablist" aria-label="Seções do painel"></nav>
+  </div>
+</div>
 
 <main id="conteudo" class="wrap" tabindex="-1"></main>
+<button type="button" id="btnTopo" class="btn-topo" hidden>↑ Topo</button>
 <div id="anuncio" class="so-leitor" role="status" aria-live="polite"></div>
 
 <footer class="rodape">
   <p>Dados extraídos do relatório financeiro (<span id="fonteDados">Tecinco</span>). Valores em reais (R$). Esta primeira versão usa a planilha; a próxima etapa é ligar direto ao banco de dados.</p>
 </footer>
 
-<script src="data.js?v=20261009g"></script>
-<script src="data-junsoft.js?v=20261009g"></script>
-<script src="ratings.js?v=20261009g"></script>
-<script src="app.js?v=20261009g"></script>
+<script src="data.js?v=20261009o"></script>
+<script src="data-junsoft.js?v=20261009o"></script>
+<script src="ratings.js?v=20261009o"></script>
+<script src="app.js?v=20261009o"></script>
 </body>
 </html>
