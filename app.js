@@ -281,18 +281,38 @@
       '<h3 class="subtit">Pendência</h3><div class="quads" role="group" aria-label="Pendência por tipo de título">' +
       PEND.map(function (c) { return quad(c, arrDe(c), c === ativo); }).join("") + "</div>" + (extraPend || "") + '<p class="explica">' + esc(sis.pendTxt) + "</p>";
   }
+  /* Comparação semanal: última posição registrada antes da atual (historico.js) */
+  function anterior(filial) {
+    var lista = ((window.HISTORICO || {})[sis.id] || []).filter(function (e) { return e.data < DADOS.gerado; });
+    var e = lista[lista.length - 1];
+    if (!e) return null;
+    var v = filial === "todas" ? e.total : (e.filiais || {})[filial];
+    return v ? { data: e.data, v: v } : null;
+  }
+  /* Setinha: subir é ruim (mais dinheiro parado ou devido), cair é bom. Texto junto, a cor não é o único sinal */
+  function variacao(atual, antes, data) {
+    if (antes == null) return "";
+    var d = atual - antes, desde = " desde " + dataBR(data);
+    if (Math.abs(d) < 0.5) return '<span class="var igual"><span aria-hidden="true">=</span> sem mudança' + desde + "</span>";
+    var p = antes ? " (" + pct(Math.abs(d) / antes) + ")" : "";
+    return '<span class="var ' + (d > 0 ? "sobe" : "desce") + '"><span aria-hidden="true">' + (d > 0 ? "▲" : "▼") + "</span> " + (d > 0 ? "subiu " : "caiu ") + Rk(Math.abs(d)) + p + desde + "</span>";
+  }
   /* Resumo de 4 números. Cada número abre a lista desses títulos */
-  function resumo4(arr, compacto) {
+  var CHAVE_HIST = { "A receber": "receber", "Judicial + Dívida Antiga": "demorados", "Boletos": "boletos", "A pagar": "pagar" };
+  function resumo4(arr, compacto, filial) {
+    var ant = anterior(filial || "todas");
     function card(cl, chave, rot, filtro, desc) {
       var r = resumo(arr.filter(filtro)), on = estado.aba === "titulos" && estado.cat === chave;
+      var vr = ant ? variacao(r.aberto, ant.v[CHAVE_HIST[chave]], ant.data) : "";
       return '<button type="button" class="res ' + cl + (on ? " on" : "") + '" data-ir="' + esc(chave) + '" aria-pressed="' + on + '"><span class="r">' + rot + '</span><span class="n" data-num="' + r.aberto + '">' + R(r.aberto) + '</span><span class="d">' +
-        (desc || r.nAbertos.toLocaleString("pt-BR") + " título(s) · " + r.nClientes + " cliente(s)") + '</span><span class="ir" aria-hidden="true">' + (on ? "Mostrando abaixo" : "Ver lista →") + "</span></button>";
+        (desc || r.nAbertos.toLocaleString("pt-BR") + " título(s) · " + r.nClientes + " cliente(s)") + "</span>" + vr + '<span class="ir" aria-hidden="true">' + (on ? "Mostrando abaixo" : "Ver lista →") + "</span></button>";
     }
     return '<div class="resumo' + (compacto ? " compacto" : "") + '" role="group" aria-label="Resumo dos valores">' +
       card("hero", "A receber", "A receber", GRUPOS["A receber"].f, null) +
       card("", "Judicial + Dívida Antiga", "Judicial + Dívida Antiga", GRUPOS["Judicial + Dívida Antiga"].f) +
       card("", BOLETO, "Boletos", function (x) { return x.c === BOLETO; }) +
-      card("pagar", "A pagar", "Contas a pagar", GRUPOS["A pagar"].f, "Dinheiro que a empresa deve, não entra no A receber") + "</div>";
+      card("pagar", "A pagar", "Contas a pagar", GRUPOS["A pagar"].f, "Dinheiro que a empresa deve, não entra no A receber") + "</div>" +
+      (ant || compacto ? "" : '<p class="explica nota-var">As setinhas de comparação (subiu ou caiu desde a semana anterior) aparecem a partir da próxima atualização da planilha.</p>');
   }
   function renderGeral(el) {
     if (CATEGORIAS.indexOf(estado.secGeral) < 0 && PEND.indexOf(estado.secGeral) < 0) estado.secGeral = BOLETO;
@@ -479,7 +499,7 @@
 
     function sec() { return base.filter(naCat); }
     function chips() {
-      el.querySelector("#zRes").innerHTML = resumo4(base, true);
+      el.querySelector("#zRes").innerHTML = resumo4(base, true, estado.filial);
       el.querySelector("#zCat").innerHTML = gruposQuads(function (c) { return base.filter(function (x) { return x.c === c; }); }, estado.cat);
       el.querySelector("#zLanc").innerHTML = [["receber", "Contas a receber"], ["pagar", "Contas a pagar (" + pagarF.length + ")"]].map(function (s) { return '<button class="chip ' + (estado.lanc === s[0] ? "on" : "") + '" data-lanc="' + s[0] + '" aria-pressed="' + (estado.lanc === s[0]) + '">' + s[1] + "</button>"; }).join("");
       var sts = [["todos", "Todos"], ["aberto", "Não pagos"], ["atrasado", "Vencidos"], ["pago", "Pagos"]];

@@ -118,10 +118,17 @@ button,.chip,.aba{touch-action:manipulation}
   .res .n{font-size:1.6rem}.res.hero .n{font-size:2.6rem}
 }
 
+/* Variação desde a posição anterior: subir = vermelho, cair = verde (com seta e texto) */
+.res .var{display:block;margin-top:6px;font-size:.78rem;font-weight:600;font-variant-numeric:tabular-nums}
+.res .var.sobe{color:#B42318}.res .var.desce{color:#13774A}.res .var.igual{color:var(--texto-suave)}
+.res.hero .var.sobe{color:#FFB4AB}.res.hero .var.desce{color:#8EE3B5}.res.hero .var.igual{color:#C9CFD8}
+.nota-var{margin:-18px 0 24px;font-size:.8rem}
+
 /* Na aba Títulos o resumo fica compacto para a lista aparecer logo */
 .resumo.compacto{margin-bottom:18px}
 .compacto .res{padding:12px 14px}
 .compacto .res .d,.compacto .res .ir{display:none}
+.compacto .res .var{margin-top:2px;font-size:.7rem}
 .compacto .res.hero .n{font-size:1.5rem}
 .ir-lista{all:unset;cursor:pointer;color:var(--sis);font-weight:700;white-space:nowrap}
 .ir-lista:focus-visible{outline:2px solid var(--sis);outline-offset:2px}

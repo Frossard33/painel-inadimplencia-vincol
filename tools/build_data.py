@@ -1,5 +1,6 @@
 import openpyxl,sys,re,json,datetime,collections
 src,out=sys.argv[1],sys.argv[2]
+GERADO=sys.argv[3] if len(sys.argv)>3 else "2026-10-06"  # data da posicao da planilha (AAAA-MM-DD)
 MASK=True
 ZERADAS=["Cobrança Extrajudicial"]  # categorias exibidas com valor zero (dados ainda nao liberados); remova da lista para voltar a mostrar
 wb=openpyxl.load_workbook(src,data_only=True)
@@ -78,4 +79,4 @@ print("rows",len(out_rows),"dup keys",dups)
 for c,n in collections.Counter(x['c'] for x in out_rows).items(): print(c,n,round(sum(x['sal'] for x in out_rows if x['c']==c)))
 print(collections.Counter(x['f'] for x in out_rows))
 print("missing venc",sum(1 for x in out_rows if not x['v']),"zero sal",sum(1 for x in out_rows if x['sal']<=0))
-open(out,'w',encoding='utf-8').write("window.DADOS="+json.dumps({"gerado":"2026-10-06","titulos":out_rows,"pagar":pagar,"pend":pend},ensure_ascii=False,separators=(',',':'))+";\n")
+open(out,'w',encoding='utf-8').write("window.DADOS="+json.dumps({"gerado":GERADO,"titulos":out_rows,"pagar":pagar,"pend":pend},ensure_ascii=False,separators=(',',':'))+";\n")
