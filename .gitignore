@@ -1,2 +1,5 @@
-﻿.claude/
+.claude/
 __pycache__/
+launch.json
+web/node_modules/
+web/dist/
