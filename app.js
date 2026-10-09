@@ -360,7 +360,7 @@
   function abrirFiltro(k, btn, fonte, aplicar) {
     fecharFiltro();
     var d = colDef(k), linhas = filtrar(fonte, k), m = {};
-    linhas.forEach(function (x) { var v = d.v(x); if (!m[v]) m[v] = { n: 0, row: x, ab: 0, rec: 0 }; m[v].n++; m[v].ab += x.aberto; m[v].rec += x.recebido; });
+    linhas.forEach(function (x) { var v = d.v(x); if (!m[v]) m[v] = { n: 0, np: 0, row: x, ab: 0, rec: 0 }; m[v].n++; m[v].ab += x.aberto; m[v].rec += x.recebido; if (!x.pago) m[v].np++; });
     var vals = Object.keys(m).sort(function (a, b) { return d.o(m[a].row, m[b].row); });
     var sel = {}, atual = estado.colFilt[k];
     vals.forEach(function (v) { sel[v] = !atual || atual.indexOf(v) >= 0; });
@@ -378,8 +378,9 @@
     function visiveis() { var q = busca.value.trim().toLowerCase(); return vals.filter(function (v) { return !q || v.toLowerCase().indexOf(q) >= 0; }); }
     function somaSel() {
       var n = 0, ab = 0, rec = 0;
-      vals.forEach(function (v) { if (sel[v]) { n += m[v].n; ab += m[v].ab; rec += m[v].rec; } });
-      p.querySelector(".pf-soma").innerHTML = "Selecionado: <b>" + n.toLocaleString("pt-BR") + "</b> título(s)<br>Em aberto: <b>" + R(ab) + "</b>" + (rec ? " · Recebido: <b>" + R(rec) + "</b>" : "");
+      var inad = CATEGORIAS.indexOf(estado.cat) >= 0 && estado.lanc !== "pagar" && estado.status !== "pago";
+      vals.forEach(function (v) { if (sel[v]) { n += inad ? m[v].np : m[v].n; ab += m[v].ab; rec += m[v].rec; } });
+      p.querySelector(".pf-soma").innerHTML = "Selecionado: <b>" + n.toLocaleString("pt-BR") + "</b> título(s)<br>Em aberto: <b>" + R(ab) + "</b>" + (rec && !inad ? " · Recebido: <b>" + R(rec) + "</b>" : "");
     }
     function desenhar() {
       var vs = visiveis(); somaSel();
@@ -473,10 +474,13 @@
       h += "</tbody></table></div>";
       if (lista.length > vis.length) h += '<div class="mais"><button class="btn primario" id="maisBtn" type="button">Mostrar mais (' + (lista.length - vis.length) + " restantes)</button></div>";
       var nf = Object.keys(estado.colFilt).length;
-      h = '<div class="soma-filtro" role="status"><span><small>Títulos' + (nf || estado.busca || estado.status !== "todos" ? " filtrados" : "") + " de " + (pg ? "Contas a pagar" : esc(estado.cat)) + "</small><b>" + lista.length.toLocaleString("pt-BR") + "</b></span>" +
-        "<span><small>Total em aberto</small><b>" + R(soma(lista, "aberto")) + "</b></span>" +
-        "<span><small>Total recebido</small><b>" + R(soma(lista, "recebido")) + "</b></span>" +
-        "<span><small>Valor dos títulos</small><b>" + R(soma(lista, "val")) + "</b></span>" +
+      /* Na inadimplência, título pago não entra nos totais (só quando o filtro é "Pagos") */
+      var inad = !pg && CATEGORIAS.indexOf(estado.cat) >= 0 && estado.status !== "pago", tot = inad ? lista.filter(function (x) { return !x.pago; }) : lista;
+      h = '<div class="soma-filtro" role="status"><span><small>Títulos' + (inad ? " em aberto" : "") + (nf || estado.busca || estado.status !== "todos" ? " filtrados" : "") + " de " + (pg ? "Contas a pagar" : esc(estado.cat)) + "</small><b>" + tot.length.toLocaleString("pt-BR") + "</b></span>" +
+        "<span><small>Total em aberto</small><b>" + R(soma(tot, "aberto")) + "</b></span>" +
+        (inad ? "" : "<span><small>Total recebido</small><b>" + R(soma(tot, "recebido")) + "</b></span>") +
+        "<span><small>Valor dos títulos</small><b>" + R(soma(tot, "val")) + "</b></span>" +
+        (inad && lista.length > tot.length ? "<span><small>Pagos (fora dos totais)</small><b>" + (lista.length - tot.length) + "</b></span>" : "") +
         (nf || estado.ordemCol ? '<button type="button" class="btn" id="limparCols">Limpar filtros das colunas</button>' : "") + "</div>" + h;
       el.querySelector("#zTab").innerHTML = h;
       anunciar(lista.length.toLocaleString("pt-BR") + " títulos encontrados");
